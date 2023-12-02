@@ -4,6 +4,8 @@ const NUM_STRS: [&str; 9] = [
     "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
 ];
 
+const RADIX: u32 = 10;
+
 fn main() {
     let contents = fs::read_to_string("1.txt").unwrap();
 
@@ -22,7 +24,7 @@ fn main() {
 fn calibration_value_pt1(line: &str) -> u32 {
     let first_int = get_first_int(line);
 
-    let line_reversed: String = line.chars().rev().collect();
+    let line_reversed: String = reverse_str(line);
 
     let last_int = get_first_int(&line_reversed);
 
@@ -30,20 +32,16 @@ fn calibration_value_pt1(line: &str) -> u32 {
 }
 
 fn calibration_value_pt2(line: &str) -> u32 {
-    let num_strs: Vec<String> = NUM_STRS.into_iter().map(|s| String::from(s)).collect();
+    let first_int = get_first_int_pt2(line, &NUM_STRS);
 
-    let first_int = get_first_int_pt2(line, &num_strs);
+    let line_reversed: String = reverse_str(line);
 
-    let line_reversed: String = line.chars().rev().collect();
-
-    let num_strs_rev: Vec<String> = num_strs.iter().map(|s| s.chars().rev().collect()).collect();
+    let num_strs_rev: Vec<_> = NUM_STRS.iter().map(|s| reverse_str(s)).collect();
 
     let last_int = get_first_int_pt2(&line_reversed, &num_strs_rev);
 
     last_int + first_int * 10
 }
-
-const RADIX: u32 = 10;
 
 fn get_first_int(s: &str) -> u32 {
     for c in s.chars() {
@@ -55,7 +53,7 @@ fn get_first_int(s: &str) -> u32 {
     panic!("No int found in {}", s);
 }
 
-fn get_first_int_pt2(s: &str, num_strs: &Vec<String>) -> u32 {
+fn get_first_int_pt2(s: &str, num_strs: &[impl AsRef<str>]) -> u32 {
     let mut checked_chars = String::from("");
 
     for c in s.chars() {
@@ -66,13 +64,17 @@ fn get_first_int_pt2(s: &str, num_strs: &Vec<String>) -> u32 {
         checked_chars.push(c);
 
         for (i, num_str) in num_strs.iter().enumerate() {
-            if checked_chars.contains(num_str) {
+            if checked_chars.contains(num_str.as_ref()) {
                 return (1 + i).try_into().unwrap();
             }
         }
     }
 
     panic!("No int found in {}", s);
+}
+
+fn reverse_str(s: &str) -> String {
+    s.chars().rev().collect()
 }
 
 #[cfg(test)]
