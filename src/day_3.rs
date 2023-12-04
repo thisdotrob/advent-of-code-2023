@@ -1,144 +1,187 @@
 use std::collections::HashSet;
-use std::env;
 use std::fs;
 
 pub fn run() {
-    let contents = fs::read_to_string("3.txt").unwrap().replace("\n", "");
-
-    let contents_chars: Vec<char> = contents.chars().collect();
-
-    assert_eq!(contents.len(), contents_chars.len());
-
-    let pt_1 = sum_of_part_numbers(contents_chars);
-
-    println!("pt1: {}", pt_1);
+    let contents = fs::read_to_string("3.txt").unwrap();
+    let lines: Vec<_> = contents.lines().collect();
+    let pt1 = sum_of_part_numbers(lines);
+    println!("pt1: {}", pt1);
 }
 
-fn sum_of_part_numbers(contents_chars: Vec<char>) -> u32 {
-    let line_length = env::var("LINE_LENGTH").unwrap_or(String::from("140"));
-    let line_length: usize = line_length.parse().unwrap();
+fn sum_of_part_numbers(lines: Vec<&str>) -> u32 {
+    let mut sum = 0;
+    let mut checked_indexes = HashSet::new();
 
-    println!("ll: {}", line_length);
+    let max_i = lines.len() - 1;
 
-    let mut part_number_indexes = HashSet::new();
+    let lines: Vec<Vec<char>> = lines.iter().map(|l| l.chars().collect()).collect();
 
-    let mut sum_of_part_numbers = 0;
+    for i in 0..=max_i {
+        let max_j = lines[i].len() - 1;
 
-    for i in 0..contents_chars.len() {
-        if !part_number_indexes.contains(&i) && is_part_number(i, &contents_chars, line_length) {
-            part_number_indexes.insert(i);
+        for j in 0..=max_j {
+            let char = lines[i][j];
 
-            let mut part_number_chars = vec![contents_chars[i]];
+            if !char.is_digit(10) && char != '.' {
+                checked_indexes.insert((i, j));
 
-            let mut j = i - 1;
+                let i = i as i32;
+                let j = j as i32;
 
-            loop {
-                let char = contents_chars[j];
-                println!("A {}", char);
+                let mut adjacent_indexes = vec![
+                    (i, j - 1),     // left
+                    (i, j + 1),     // right
+                    (i - 1, j),     // above
+                    (i + 1, j),     // below
+                    (i - 1, j - 1), // top left
+                    (i - 1, j + 1), // top right
+                    (i + 1, j - 1), // bottom left
+                    (i + 1, j + 1), // bottom right
+                ];
 
-                if !char.is_numeric() {
-                    break;
-                } else {
-                    part_number_indexes.insert(j);
-                    part_number_chars.push(char);
-                }
+                adjacent_indexes.retain(|(i, j)| {
+                    0 <= *i && max_i as i32 >= *i && 0 <= *j && max_j as i32 >= *j
+                });
 
-                if j % line_length == 0 {
-                    break;
-                } else {
-                    j -= 1
+                let adjacent_indexes: Vec<(usize, usize)> = adjacent_indexes
+                    .iter()
+                    .map(|(i, j)| (*i as usize, *j as usize))
+                    .collect();
+
+                for (i, j) in adjacent_indexes {
+                    if checked_indexes.contains(&(i, j)) {
+                        continue;
+                    }
+                    let mut char = lines[i][j];
+                    if char.is_digit(10) {
+                        checked_indexes.insert((i, j));
+                        let mut part_number = vec![];
+                        let mut offset = 0;
+                        while char.is_digit(10) {
+                            checked_indexes.insert((i, (j - offset)));
+                            part_number.push(char);
+                            if j - offset > 0 {
+                                offset += 1;
+                                char = lines[i][j - offset];
+                            } else {
+                                break;
+                            }
+                        }
+                        part_number.reverse();
+                        offset = 1;
+                        char = lines[i][j + offset];
+                        checked_indexes.insert((i, j + offset));
+                        while char.is_digit(10) {
+                            part_number.push(char);
+                            checked_indexes.insert((i, (j + offset)));
+                            if j + offset < max_j {
+                                offset += 1;
+                                char = lines[i][j + offset];
+                            } else {
+                                break;
+                            }
+                        }
+
+                        let part_number: String = part_number.into_iter().collect();
+                        sum += part_number.parse::<u32>().unwrap();
+                    }
                 }
             }
-
-            part_number_chars.reverse();
-
-            j = i + 1;
-
-            loop {
-                let char = contents_chars[j];
-                println!("B {}", char);
-
-                if !char.is_numeric() {
-                    break;
-                } else {
-                    part_number_indexes.insert(j);
-                    part_number_chars.push(char);
-                }
-
-                if j >= (line_length - 1) && (j - (line_length - 1)) % line_length == 0 {
-                    break;
-                } else {
-                    j += 1
-                }
-            }
-
-            let part_number_str: String = part_number_chars.iter().collect();
-            let part_number_int = part_number_str.parse::<u32>().unwrap();
-            println!("C {}", part_number_int);
-            sum_of_part_numbers += part_number_int;
-        };
-    }
-
-    sum_of_part_numbers
-}
-
-fn is_part_number(i: usize, chars: &Vec<char>, line_length: usize) -> bool {
-    let length = chars.len();
-
-    let is_first_in_row = i % line_length == 0;
-
-    let is_last_in_row = if i >= (line_length - 1) {
-        (i - (line_length - 1)) % line_length == 0
-    } else {
-        false
-    };
-
-    let char = chars[i];
-
-    println!("{:?}", char);
-
-    if !char.is_numeric() {
-        return false;
-    }
-
-    let i = i as i32;
-    let line_length = line_length as i32;
-
-    println!("i: {}", i);
-
-    let mut adjacent_indexes: Vec<i32> = vec![
-        i - 1,  // left
-        i + 1,  // right
-        i - line_length, // above
-        i + line_length, // below
-        i - (line_length + 1), // diagonal above left
-        i - (line_length - 1),  // diagonal above right
-        i + (line_length - 1),  // diagonal below left
-        i + (line_length + 1), // diagonal below right
-    ];
-
-    println!("{:?}", adjacent_indexes);
-
-    if !is_first_in_row {
-        adjacent_indexes.push(i - (line_length + 1)); // diagonal above left
-        adjacent_indexes.push(i + (line_length - 1)); // diagonal below left
-    }
-
-    if !is_last_in_row {
-        adjacent_indexes.push(i - (line_length - 1)); // diagonal above right
-        adjacent_indexes.push(i + (line_length + 1)); // diagonal below right
-    }
-
-    // remove non-existant adjacent indexes
-    adjacent_indexes.retain(|i| *i >= 0);
-    adjacent_indexes.retain(|i| *i < length as i32);
-
-    for i in adjacent_indexes {
-        let char = chars[i as usize];
-        if char != '.' && char.is_ascii_punctuation() {
-            return true;
         }
     }
 
-    false
+    sum
+}
+
+#[cfg(test)]
+mod day_3_test {
+    use super::*;
+
+    #[test]
+    fn no_numbers_or_symbols() {
+        let lines = vec![".....", ".....", "....."];
+        assert_eq!(0, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn symbols_and_no_numbers() {
+        let lines = vec!["+.*.$", ".=..%", "/.@.#", "...-."];
+        assert_eq!(0, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_to_left() {
+        let lines = vec![".....", "$101.", "....."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_to_right() {
+        let lines = vec![".....", ".101%", "....."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_to_top() {
+        let lines = vec!["..@..", ".101.", "....."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_to_bottom() {
+        let lines = vec![".....", ".101.", "..*.."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_to_top_left() {
+        let lines = vec!["-....", ".101.", "....."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_to_top_right() {
+        let lines = vec!["....+", ".101.", "....."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_to_bottom_left() {
+        let lines = vec![".....", ".101.", "/...."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_to_bottom_right() {
+        let lines = vec![".....", ".101.", "....#"];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_top_inner() {
+        let lines = vec![".=...", ".101.", "....."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+
+        let lines = vec!["...=.", ".101.", "....."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn single_part_number_symbol_bottom_inner() {
+        let lines = vec![".....", ".101.", ".&..."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+
+        let lines = vec![".....", ".101.", "...&."];
+        assert_eq!(101, sum_of_part_numbers(lines));
+    }
+
+    #[test]
+    fn first_2_lines_of_input() {
+        let lines = vec![
+".......262....300...................507.....961..............668.....................189.906...........................624..................",
+"..148.................805..130..880*...........*684.............*......*..............*..-......%.................$........17...65....91*...",
+        ];
+        let expected = 507 + 961 + 668 + 189 + 906 + 880 + 684 + 91;
+        assert_eq!(expected, sum_of_part_numbers(lines));
+    }
 }
