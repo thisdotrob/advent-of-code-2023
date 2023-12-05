@@ -6,7 +6,8 @@ pub fn run() {
     let lines: Vec<_> = contents.lines().collect();
     let pt1 = points_total(&lines);
     println!("pt1: {}", pt1);
-    let pt2 = scratchcards_total(&lines[..], lines.len());
+    let mut memo: [i32; 200] = [-1; 200];
+    let pt2 = scratchcards_total(&lines[..], lines.len(), &mut memo);
     println!("pt2: {}", pt2);
 }
 
@@ -18,26 +19,38 @@ fn points_total(lines: &Vec<&str>) -> u32 {
         .sum()
 }
 
-fn scratchcards_total(lines: &[&str], count: usize) -> u32 {
+fn scratchcards_total(lines: &[&str], count: usize, memo: &mut [i32; 200]) -> u32 {
     let mut total = 0_u32;
     for i in 0..count {
         let card = Card::from(lines[i]);
-        total += 1;
-        if card.match_count > 0 {
-            total += scratchcards_total(&lines[i + 1..], card.match_count as usize);
+        let memo_total = memo[card.card_number as usize];
+        if memo_total == -1 {
+            if card.match_count > 0 {
+                let copies = scratchcards_total(&lines[i + 1..], card.match_count as usize, memo);
+                total += 1 + copies;
+                memo[card.card_number as usize] = 1 + copies as i32;
+            } else {
+                total += 1;
+                memo[card.card_number as usize] = 1;
+            }
+        } else {
+            total += memo_total as u32;
         }
     }
     total
 }
 
 struct Card {
+    card_number: u32,
     match_count: u32,
     points: u32,
 }
 
 impl Card {
     fn from(s: &str) -> Card {
-        let (_card_number, rest) = s.split_once(":").unwrap();
+        let (card_number, rest) = s.split_once(":").unwrap();
+        let (_, card_number) = card_number.split_once(" ").unwrap();
+        let card_number: u32 = card_number.trim().parse().unwrap();
         let (winning_numbers, numbers) = rest.split_once("|").unwrap();
         let (winning_numbers, numbers) = (winning_numbers.trim(), numbers.trim());
         let winning_numbers: HashSet<_> = winning_numbers
@@ -61,6 +74,7 @@ impl Card {
         };
 
         Card {
+            card_number,
             points,
             match_count,
         }
@@ -164,6 +178,8 @@ mod day_4_pt1_test {
 
         let expected = 30;
 
-        assert_eq!(expected, scratchcards_total(&lines, lines.len()));
+        let mut memo: [i32; 200] = [-1; 200];
+
+        assert_eq!(expected, scratchcards_total(&lines, lines.len(), &mut memo));
     }
 }
