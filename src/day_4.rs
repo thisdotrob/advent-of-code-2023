@@ -19,30 +19,26 @@ fn points_total(lines: &Vec<&str>) -> u32 {
         .sum()
 }
 
-fn scratchcards_total(lines: &[&str], count: usize, memo: &mut [i32; 200]) -> u32 {
-    let mut total = 0_u32;
+fn scratchcards_total(lines: &[&str], count: usize, memo: &mut [i32; 200]) -> i32 {
+    let mut total = 0_i32;
     for i in 0..count {
         let card = Card::from(lines[i]);
-        let memo_total = memo[card.card_number as usize];
+        let mut memo_total = memo[card.card_number];
         if memo_total == -1 {
+            memo_total = 1;
             if card.match_count > 0 {
-                let copies = scratchcards_total(&lines[i + 1..], card.match_count as usize, memo);
-                total += 1 + copies;
-                memo[card.card_number as usize] = 1 + copies as i32;
-            } else {
-                total += 1;
-                memo[card.card_number as usize] = 1;
+                memo_total += scratchcards_total(&lines[i + 1..], card.match_count, memo);
             }
-        } else {
-            total += memo_total as u32;
+            memo[card.card_number] = memo_total;
         }
+        total += memo_total;
     }
     total
 }
 
 struct Card {
-    card_number: u32,
-    match_count: u32,
+    card_number: usize,
+    match_count: usize,
     points: u32,
 }
 
@@ -50,7 +46,7 @@ impl Card {
     fn from(s: &str) -> Card {
         let (card_number, rest) = s.split_once(":").unwrap();
         let (_, card_number) = card_number.split_once(" ").unwrap();
-        let card_number: u32 = card_number.trim().parse().unwrap();
+        let card_number: usize = card_number.trim().parse().unwrap();
         let (winning_numbers, numbers) = rest.split_once("|").unwrap();
         let (winning_numbers, numbers) = (winning_numbers.trim(), numbers.trim());
         let winning_numbers: HashSet<_> = winning_numbers
@@ -61,14 +57,14 @@ impl Card {
             .split_whitespace()
             .map(|s| s.parse::<u32>().unwrap())
             .collect();
-        let mut match_count = 0;
+        let mut match_count = 0_usize;
         for n in numbers {
             if winning_numbers.contains(&n) {
                 match_count += 1;
             }
         }
         let points = if match_count > 0 {
-            2_u32.pow(match_count - 1)
+            2_u32.pow(match_count as u32 - 1)
         } else {
             0
         };
