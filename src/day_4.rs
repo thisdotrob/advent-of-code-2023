@@ -1,19 +1,38 @@
-use std::fs;
 use std::collections::HashSet;
+use std::fs;
 
 pub fn run() {
     let contents = fs::read_to_string("4.txt").unwrap();
     let lines: Vec<_> = contents.lines().collect();
     let pt1 = points_total(&lines);
     println!("pt1: {}", pt1);
+    let pt2 = scratchcards_total(&lines[..], lines.len());
+    println!("pt2: {}", pt2);
 }
 
 fn points_total(lines: &Vec<&str>) -> u32 {
-    lines.iter().map(|s| Card::from(s)).map(|card| card.points).sum()
+    lines
+        .iter()
+        .map(|s| Card::from(s))
+        .map(|card| card.points)
+        .sum()
+}
+
+fn scratchcards_total(lines: &[&str], count: usize) -> u32 {
+    let mut total = 0_u32;
+    for i in 0..count {
+        let card = Card::from(lines[i]);
+        total += 1;
+        if card.match_count > 0 {
+            total += scratchcards_total(&lines[i + 1..], card.match_count as usize);
+        }
+    }
+    total
 }
 
 struct Card {
-    points: u32
+    match_count: u32,
+    points: u32,
 }
 
 impl Card {
@@ -21,8 +40,14 @@ impl Card {
         let (_card_number, rest) = s.split_once(":").unwrap();
         let (winning_numbers, numbers) = rest.split_once("|").unwrap();
         let (winning_numbers, numbers) = (winning_numbers.trim(), numbers.trim());
-        let winning_numbers: HashSet<_> = winning_numbers.split_whitespace().map(|s| s.parse::<u32>().unwrap()).collect();
-        let numbers: Vec<_> = numbers.split_whitespace().map(|s| s.parse::<u32>().unwrap()).collect();
+        let winning_numbers: HashSet<_> = winning_numbers
+            .split_whitespace()
+            .map(|s| s.parse::<u32>().unwrap())
+            .collect();
+        let numbers: Vec<_> = numbers
+            .split_whitespace()
+            .map(|s| s.parse::<u32>().unwrap())
+            .collect();
         let mut match_count = 0;
         for n in numbers {
             if winning_numbers.contains(&n) {
@@ -35,7 +60,10 @@ impl Card {
             0
         };
 
-        Card { points }
+        Card {
+            points,
+            match_count,
+        }
     }
 }
 
@@ -48,6 +76,7 @@ mod day_4_pt1_test {
         let line = "Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53";
         let card = Card::from(line);
         assert_eq!(8, card.points);
+        assert_eq!(4, card.match_count);
     }
 
     #[test]
@@ -55,6 +84,7 @@ mod day_4_pt1_test {
         let line = "Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19";
         let card = Card::from(line);
         assert_eq!(2, card.points);
+        assert_eq!(2, card.match_count);
     }
 
     #[test]
@@ -62,6 +92,7 @@ mod day_4_pt1_test {
         let line = "Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1";
         let card = Card::from(line);
         assert_eq!(2, card.points);
+        assert_eq!(2, card.match_count);
     }
 
     #[test]
@@ -69,6 +100,7 @@ mod day_4_pt1_test {
         let line = "Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83";
         let card = Card::from(line);
         assert_eq!(1, card.points);
+        assert_eq!(1, card.match_count);
     }
 
     #[test]
@@ -76,6 +108,7 @@ mod day_4_pt1_test {
         let line = "Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36";
         let card = Card::from(line);
         assert_eq!(0, card.points);
+        assert_eq!(0, card.match_count);
     }
 
     #[test]
@@ -83,17 +116,18 @@ mod day_4_pt1_test {
         let line = "Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11";
         let card = Card::from(line);
         assert_eq!(0, card.points);
+        assert_eq!(0, card.match_count);
     }
 
     #[test]
     fn points_total_example_input() {
         let lines = vec![
-"Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53",
-"Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19",
-"Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1",
-"Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83",
-"Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36",
-"Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11",
+            "Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53",
+            "Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19",
+            "Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1",
+            "Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83",
+            "Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36",
+            "Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11",
         ];
 
         let expected = 13;
@@ -115,5 +149,21 @@ mod day_4_pt1_test {
 
         let expected = card_1_points + card_2_points;
         assert_eq!(expected, points_total(&lines));
+    }
+
+    #[test]
+    fn scratchcards_total_example_input() {
+        let lines = vec![
+            "Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53",
+            "Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19",
+            "Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1",
+            "Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83",
+            "Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36",
+            "Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11",
+        ];
+
+        let expected = 30;
+
+        assert_eq!(expected, scratchcards_total(&lines, lines.len()));
     }
 }
