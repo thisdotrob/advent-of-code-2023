@@ -10,6 +10,8 @@ pub fn run() {
     let seeds = seeds.trim();
     let seeds: Vec<_> = seeds.split_whitespace().map(|s| s.parse::<usize>().unwrap()).collect();
 
+    let categories = ["seed", "soil", "fertilizer", "water", "light", "temperature", "humidity", "location"];
+
     let mut maps: HashMap<&str, Vec<MapRange>> = HashMap::new();
 
     let mut k = "";
@@ -46,6 +48,97 @@ pub fn run() {
     }
 
     println!("pt1: {}", lowest_location_number);
+
+    run_pt2();
+}
+
+fn run_pt2() {
+    let contents = fs::read_to_string("5_example.txt").unwrap();
+    let mut lines = contents.lines();
+
+    let seed_line = lines.next().unwrap();
+    let (_, seeds) = seed_line.split_once(":").unwrap();
+    let seeds = seeds.trim();
+    let seeds: Vec<_> = seeds.split_whitespace().map(|s| s.parse::<usize>().unwrap()).collect();
+    let seeds = seeds.chunks_exact(2);
+    let seeds = seeds.map(|s| -> [usize; 2] {
+        s.try_into().unwrap()
+    });
+    let seeds = seeds.map(|mut s| {
+        s[1] -= 1;
+        s
+    });
+
+    let mut maps: HashMap<String, HashMap<String, Vec<MapRange>>> = HashMap::new();
+
+    let mut source_k = String::from("");
+    let mut dest_k = String::from("");
+    let mut categories = vec![];
+
+    for line in lines {
+        if let Some(char) = line.chars().next() {
+            if char.is_ascii_digit() {
+                let mut line = line.split_whitespace().map(|s| s.parse::<usize>().unwrap());
+                let dest_range_start = line.next().unwrap();
+                let source_range_start = line.next().unwrap();
+                let range_length = line.next().unwrap() - 1;
+                let source_maps = maps.entry(String::from(&source_k)).or_insert(HashMap::new());
+                let map = source_maps.entry(String::from(&dest_k)).or_insert(Vec::new());
+                let map_range = MapRange(range_length, source_range_start, dest_range_start);
+                map.push(map_range);
+            } else {
+                let mut split = line.split_whitespace();
+                let mut split = split.next().unwrap().split("-");
+                source_k = split.next().unwrap().to_string();
+                split.next();
+                dest_k = split.next().unwrap().to_string();
+                categories.push(String::from(&source_k));
+            }
+        }
+    }
+
+    println!("maps: {:?}", maps);
+
+    for seed in seeds.take(1) {
+        let [start_seed, seed_range_length] = seed;
+
+        let mut start_num = start_seed;
+        let mut range_length = seed_range_length;
+        for w in categories.windows(2) {
+            let source_k = &w[0];
+            let dest_k = &w[1];
+            let map = maps.get(source_k).unwrap().get(dest_k).unwrap();
+            let map_range = map.iter().find(|mr| {
+                let range_length = mr.0;
+                let source_range_start = mr.1;
+                start_num >= source_range_start && start_num <= (source_range_start + range_length - 1)
+            });
+
+            if let Some(mr) = map_range {
+                let source_range_start = mr.1;
+                let offset = start_num - source_range_start;
+                let map_range_length = mr.0 - offset;
+                if map_range_length < range_length {
+                    range_length = map_range_length
+                };
+                let dest_range_start = mr.2;
+                start_num = dest_range_start + offset;
+            } else {
+                for mr in map {
+                    let source_range_start = mr.1;
+                    if source_range_start > start_num && source_range_start <= start_num + range_length {
+                        // last number that can be directly mapped source > dest
+                        range_length = source_range_start - start_num;
+                    }
+                }
+            }
+        }
+
+        println!("start_seed: {}", start_seed);
+        println!("seed_range_length: {}", seed_range_length);
+        println!("start_num: {}", start_num);
+        println!("range_length: {}", range_length);
+    }
 }
 
 fn get_destination_num(source_num: usize, map: &Vec<MapRange>) -> usize {
