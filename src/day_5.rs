@@ -1,16 +1,23 @@
-use std::fs;
 use std::collections::HashMap;
+use std::fs;
 
 pub fn run() {
+    println!("pt1: {}", pt1());
+
+    println!("pt2: {}", pt2());
+}
+
+fn pt1() -> usize {
     let contents = fs::read_to_string("5.txt").unwrap();
     let mut lines = contents.lines();
 
     let seed_line = lines.next().unwrap();
     let (_, seeds) = seed_line.split_once(":").unwrap();
     let seeds = seeds.trim();
-    let seeds: Vec<_> = seeds.split_whitespace().map(|s| s.parse::<usize>().unwrap()).collect();
-
-    let categories = ["seed", "soil", "fertilizer", "water", "light", "temperature", "humidity", "location"];
+    let seeds: Vec<_> = seeds
+        .split_whitespace()
+        .map(|s| s.parse::<usize>().unwrap())
+        .collect();
 
     let mut maps: HashMap<&str, Vec<MapRange>> = HashMap::new();
 
@@ -32,7 +39,15 @@ pub fn run() {
         }
     }
 
-    let map_names = ["seed-to-soil", "soil-to-fertilizer", "fertilizer-to-water", "water-to-light", "light-to-temperature", "temperature-to-humidity", "humidity-to-location"];
+    let map_names = [
+        "seed-to-soil",
+        "soil-to-fertilizer",
+        "fertilizer-to-water",
+        "water-to-light",
+        "light-to-temperature",
+        "temperature-to-humidity",
+        "humidity-to-location",
+    ];
 
     let mut lowest_location_number = usize::MAX;
 
@@ -47,23 +62,22 @@ pub fn run() {
         }
     }
 
-    println!("pt1: {}", lowest_location_number);
-
-    run_pt2();
+    lowest_location_number
 }
 
-fn run_pt2() {
-    let contents = fs::read_to_string("5_example.txt").unwrap();
+fn pt2() -> usize {
+    let contents = fs::read_to_string("5.txt").unwrap();
     let mut lines = contents.lines();
 
     let seed_line = lines.next().unwrap();
     let (_, seeds) = seed_line.split_once(":").unwrap();
     let seeds = seeds.trim();
-    let seeds: Vec<_> = seeds.split_whitespace().map(|s| s.parse::<usize>().unwrap()).collect();
+    let seeds: Vec<_> = seeds
+        .split_whitespace()
+        .map(|s| s.parse::<usize>().unwrap())
+        .collect();
     let seeds = seeds.chunks_exact(2);
-    let seeds = seeds.map(|s| -> [usize; 2] {
-        s.try_into().unwrap()
-    });
+    let seeds = seeds.map(|s| -> [usize; 2] { s.try_into().unwrap() });
     let seeds = seeds.map(|mut s| {
         s[1] -= 1;
         s
@@ -75,6 +89,8 @@ fn run_pt2() {
     let mut dest_k = String::from("");
     let mut categories = vec![];
 
+    categories.push("seed".to_string());
+
     for line in lines {
         if let Some(char) = line.chars().next() {
             if char.is_ascii_digit() {
@@ -82,8 +98,12 @@ fn run_pt2() {
                 let dest_range_start = line.next().unwrap();
                 let source_range_start = line.next().unwrap();
                 let range_length = line.next().unwrap() - 1;
-                let source_maps = maps.entry(String::from(&source_k)).or_insert(HashMap::new());
-                let map = source_maps.entry(String::from(&dest_k)).or_insert(Vec::new());
+                let source_maps = maps
+                    .entry(String::from(&source_k))
+                    .or_insert(HashMap::new());
+                let map = source_maps
+                    .entry(String::from(&dest_k))
+                    .or_insert(Vec::new());
                 let map_range = MapRange(range_length, source_range_start, dest_range_start);
                 map.push(map_range);
             } else {
@@ -92,53 +112,66 @@ fn run_pt2() {
                 source_k = split.next().unwrap().to_string();
                 split.next();
                 dest_k = split.next().unwrap().to_string();
-                categories.push(String::from(&source_k));
+                categories.push(String::from(&dest_k));
             }
         }
     }
 
-    println!("maps: {:?}", maps);
+    for seed in seeds {
+        let [mut start_seed, mut seed_range_length] = seed;
 
-    for seed in seeds.take(1) {
-        let [start_seed, seed_range_length] = seed;
-
-        let mut start_num = start_seed;
-        let mut range_length = seed_range_length;
-        for w in categories.windows(2) {
-            let source_k = &w[0];
-            let dest_k = &w[1];
-            let map = maps.get(source_k).unwrap().get(dest_k).unwrap();
-            let map_range = map.iter().find(|mr| {
-                let range_length = mr.0;
-                let source_range_start = mr.1;
-                start_num >= source_range_start && start_num <= (source_range_start + range_length - 1)
-            });
-
-            if let Some(mr) = map_range {
-                let source_range_start = mr.1;
-                let offset = start_num - source_range_start;
-                let map_range_length = mr.0 - offset;
-                if map_range_length < range_length {
-                    range_length = map_range_length
-                };
-                let dest_range_start = mr.2;
-                start_num = dest_range_start + offset;
-            } else {
-                for mr in map {
+        while seed_range_length > 0 {
+            let mut start_num = start_seed;
+            let mut range_length = seed_range_length;
+            for w in categories.windows(2) {
+                let source_k = &w[0];
+                let dest_k = &w[1];
+                let map = maps.get(source_k).unwrap().get(dest_k).unwrap();
+                let map_range = map.iter().find(|mr| {
+                    let range_length = mr.0;
                     let source_range_start = mr.1;
-                    if source_range_start > start_num && source_range_start <= start_num + range_length {
-                        // last number that can be directly mapped source > dest
-                        range_length = source_range_start - start_num;
+                    start_num >= source_range_start
+                        && start_num <= (source_range_start + range_length - 1)
+                });
+
+                if let Some(mr) = map_range {
+                    let source_range_start = mr.1;
+                    let offset = start_num - source_range_start;
+                    let map_range_length = mr.0 - offset;
+                    if map_range_length < range_length {
+                        range_length = map_range_length
+                    };
+
+                    let dest_range_start = mr.2;
+                    start_num = dest_range_start + offset;
+                } else {
+                    for mr in map {
+                        let source_range_start = mr.1;
+                        if source_range_start > start_num
+                            && source_range_start <= start_num + range_length
+                        {
+                            // last number that can be directly mapped source > dest
+                            range_length = source_range_start - start_num;
+                        }
                     }
                 }
-            }
-        }
 
-        println!("start_seed: {}", start_seed);
-        println!("seed_range_length: {}", seed_range_length);
-        println!("start_num: {}", start_num);
-        println!("range_length: {}", range_length);
+                let seed_maps = maps.get_mut("seed").unwrap();
+                let map = seed_maps.entry(dest_k.to_string()).or_insert(Vec::new());
+                let map_range = MapRange(range_length, start_seed, start_num);
+                map.push(map_range);
+            }
+
+            start_seed += range_length + 1;
+            seed_range_length -= range_length;
+        }
     }
+
+    let seed_to_location_map = maps.get("seed").unwrap().get("location").unwrap();
+
+    let lowest_location_map_range = seed_to_location_map.iter().min_by(|x, y| x.2.cmp(&y.2));
+
+    lowest_location_map_range.unwrap().2
 }
 
 fn get_destination_num(source_num: usize, map: &Vec<MapRange>) -> usize {
@@ -154,10 +187,10 @@ fn get_destination_num(source_num: usize, map: &Vec<MapRange>) -> usize {
             let source_range_start = range.1;
             let offset = source_num - source_range_start;
             dest_range_start + offset
-        },
+        }
         None => source_num,
     }
 }
 
 #[derive(Debug)]
-struct MapRange (usize, usize, usize);
+struct MapRange(usize, usize, usize);
