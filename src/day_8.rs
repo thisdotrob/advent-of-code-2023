@@ -1,7 +1,59 @@
+use std::collections::HashMap;
 use std::{fs, str::Lines};
 
 pub fn run() {
     println!("pt1: {:?}", pt1("8.txt"));
+    println!("pt2: {:?}", pt2("8.txt"));
+}
+
+fn pt2(filename: &str) -> u64 {
+    let contents = fs::read_to_string(filename).unwrap();
+    let mut lines = contents.lines();
+    let mut instructions = parse_instructions(lines.next().unwrap());
+    lines.next();
+
+    let mut tree: HashMap<String, [String; 2]> = HashMap::new();
+
+    let mut start_labels = vec![];
+
+    for line in lines {
+        let label = &line[..3];
+        if label.chars().last() == Some('A') {
+            start_labels.push(String::from(label));
+        }
+        let left = String::from(&line[7..10]);
+        let right = String::from(&line[12..15]);
+        tree.insert(String::from(label), [left, right]);
+    }
+
+    let mut steps = 0;
+
+    for start_label in &start_labels {
+        let mut label = start_label;
+
+        let mut step = 0;
+
+        loop {
+            step += 1;
+
+            let instruction = instructions.next().unwrap();
+
+            let [left, right] = tree.get(label).unwrap();
+
+            label = if instruction == 'L' { left } else { right };
+
+            if label.chars().last() == Some('Z') {
+                if steps == 0 {
+                    steps = step;
+                } else {
+                    steps = lcm(steps, step);
+                }
+                break;
+            }
+        }
+    }
+
+    steps
 }
 
 fn pt1(filename: &str) -> u64 {
@@ -87,6 +139,19 @@ fn node_index(label: &str) -> usize {
 
 fn char_to_index_int(char: char) -> usize {
     char as usize - 65
+}
+
+fn lcm(a: u64, b: u64) -> u64 {
+    a * (b / gcd(a, b))
+}
+
+fn gcd(mut a: u64, mut b: u64) -> u64 {
+    while b != 0 {
+        let tmp = a;
+        a = b;
+        b = tmp % b;
+    }
+    a
 }
 
 #[cfg(test)]
