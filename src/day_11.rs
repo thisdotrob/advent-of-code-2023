@@ -3,6 +3,61 @@ use std::fs;
 pub fn run() {
     let universe = fs::read_to_string("11.txt").unwrap();
     println!("pt1: {}", pt1(&universe));
+    println!("pt2: {}", pt2(&universe, 1_000_000));
+}
+
+fn pt2(universe: &str, multiplier: usize) -> usize {
+    let mut vertical_multipliers: Vec<usize> = vec![];
+
+    for line in universe.lines() {
+        if line.chars().all(|point| point == '.') {
+            vertical_multipliers.push(multiplier);
+        } else {
+            vertical_multipliers.push(1);
+        }
+    }
+
+    let transposed_universe = transpose_universe(&universe);
+
+    let mut horizontal_multipliers: Vec<usize> = vec![];
+
+    for line in transposed_universe.lines() {
+        if line.chars().all(|point| point == '.') {
+            horizontal_multipliers.push(multiplier);
+        } else {
+            horizontal_multipliers.push(1);
+        }
+    }
+
+    let positions = galaxy_positions(universe);
+
+    let pairs = galaxy_pairs(positions);
+
+    let mut sum_of_path_lengths = 0;
+
+    for [pos_1, pos_2] in pairs {
+        let mut path_length = 0;
+
+        let start_horizontal = pos_1[1].min(pos_2[1]);
+        let end_horizontal = pos_1[1].max(pos_2[1]);
+
+        for n in start_horizontal..end_horizontal {
+            let multiplier = horizontal_multipliers[n];
+            path_length += multiplier;
+        }
+
+        let start_vertical = pos_1[0].min(pos_2[0]);
+        let end_vertical = pos_1[0].max(pos_2[0]);
+
+        for n in start_vertical..end_vertical {
+            let multiplier = vertical_multipliers[n];
+            path_length += multiplier;
+        }
+
+        sum_of_path_lengths += path_length;
+    }
+
+    sum_of_path_lengths
 }
 
 fn pt1(universe: &str) -> usize {
@@ -67,13 +122,10 @@ fn expand_universe(universe: &str) -> String {
 
 fn galaxy_pairs(mut galaxy_positions: Vec<[usize; 2]>) -> Vec<[[usize; 2]; 2]> {
     let mut pairs: Vec<[[usize; 2]; 2]> = vec![];
-    let mut head = galaxy_positions.pop();
-
-    while let Some(pos_a) = head {
+    while let Some(pos_a) = galaxy_positions.pop() {
         for pos_b in &galaxy_positions {
             pairs.push([pos_a, *pos_b]);
         }
-        head = galaxy_positions.pop();
     }
     pairs
 }
@@ -128,6 +180,71 @@ mod pt1_tests {
 #...#.....";
 
         assert_eq!(374, pt1(universe));
+    }
+}
+
+#[cfg(test)]
+mod pt2_tests {
+    use super::*;
+
+    #[test]
+    fn single_expanded_row() {
+        let universe = "#..
+...
+#..";
+
+        let multiplier = 1_000_000;
+
+        assert_eq!(1_000_001, pt2(&universe, multiplier));
+    }
+
+    #[test]
+    fn example_input() {
+        let universe = "...#......
+.......#..
+#.........
+..........
+......#...
+.#........
+.........#
+..........
+.......#..
+#...#.....";
+
+        let multiplier = 10;
+
+        assert_eq!(1030, pt2(&universe, multiplier));
+    }
+
+    #[test]
+    fn example_input_pt1_multiplier() {
+        let universe = "...#......
+.......#..
+#.........
+..........
+......#...
+.#........
+.........#
+..........
+.......#..
+#...#.....";
+
+        let multiplier = 2;
+
+        assert_eq!(374, pt2(&universe, multiplier));
+    }
+
+    #[test]
+    fn single_pair_no_multiplier() {
+        let universe = "...#......
+..........
+..........
+..........
+.......#..";
+
+        let multiplier = 1;
+
+        assert_eq!(8, pt2(&universe, multiplier));
     }
 }
 
