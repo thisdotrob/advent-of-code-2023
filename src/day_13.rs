@@ -12,21 +12,55 @@ fn pt1(contents: &str) -> usize {
     let patterns = parse_patterns(contents);
 
     for pattern in patterns {
-        let col_reflection_counts = col_reflection_counts(&pattern);
-        let row_reflection_counts = row_reflection_counts(&pattern);
+        let lookup = col_reflection_key_lookup(&pattern);
 
-        if col_reflection_counts.iter().sum::<usize>() + row_reflection_counts.iter().sum::<usize>() == 0 {
-            println!("YES");
+        let num_cols = pattern[0].len(); // TODO replace with lookup length
+
+        let mut reflected_col_index = None;
+
+        for col_index in 0..num_cols - 1 {
+            let mut i0 = col_index;
+            let mut i1 = col_index + 1;
+
+            while lookup[i0] == lookup[i1] {
+                if i0 == 0 || i1 == num_cols - 1 {
+                    reflected_col_index = Some(col_index);
+                    break
+                } else {
+                    i0 -= 1;
+                    i1 += 1;
+                }
+            }
+        }
+
+        if let Some(col_index) = reflected_col_index {
+            answer += col_index + 1;
             continue
         }
 
-        let max_reflection_count_col_index = index_of_max(&col_reflection_counts);
-        let max_reflection_count_row_index = index_of_max(&row_reflection_counts);
+        let lookup = row_reflection_key_lookup(&pattern);
 
-        if max_reflection_count_row_index > max_reflection_count_col_index {
-            answer += 100 * (max_reflection_count_row_index + 1);
-        } else {
-            answer += max_reflection_count_col_index + 1;
+        let num_rows = lookup.len();
+
+        let mut reflected_row_index = None;
+
+        for row_index in 0..num_rows - 1 {
+            let mut i0 = row_index;
+            let mut i1 = row_index + 1;
+
+            while lookup[i0] == lookup[i1] {
+                if i0 == 0 || i1 == num_rows - 1 {
+                    reflected_row_index = Some(row_index);
+                    break
+                } else {
+                    i0 -= 1;
+                    i1 += 1;
+                }
+            }
+        }
+
+        if let Some(row_index) = reflected_row_index {
+            answer += 100 * (row_index + 1);
         }
     }
 
@@ -92,90 +126,6 @@ fn row_reflection_key_lookup(pattern: &Vec<Vec<char>>) -> Vec<String> {
         lookup.push(row_reflection_key(&pattern, row_index));
     }
     lookup
-}
-
-fn col_reflection_counts(pattern: &Vec<Vec<char>>) -> Vec<usize> {
-    let lookup = col_reflection_key_lookup(&pattern);
-
-    let num_cols = pattern[0].len();
-
-    let mut counts = vec![];
-
-    for col_index in 0..num_cols {
-        if !lookup[col_index].contains("#") {
-            counts.push(0);
-            continue
-        }
-
-        let mut count = 0;
-
-        let mut i0 = col_index;
-        let mut i1 = col_index + 1;
-
-        while i1 < num_cols && lookup[i0] == lookup[i1] {
-            if lookup[i0].contains("#") {
-                count = i1 - col_index;
-            }
-            if i0 == 0 {
-                break
-            } else {
-                i0 -= 1;
-                i1 += 1;
-            }
-        }
-
-        counts.push(count);
-    }
-
-    counts
-}
-
-fn row_reflection_counts(pattern: &Vec<Vec<char>>) -> Vec<usize> {
-    let lookup = row_reflection_key_lookup(&pattern);
-
-    let num_rows = pattern.len();
-
-    let mut counts = vec![];
-
-    for row_index in 0..num_rows {
-        if !lookup[row_index].contains("#") {
-            counts.push(0);
-            continue
-        }
-
-        let mut count = 0;
-
-        let mut i0 = row_index;
-        let mut i1 = row_index + 1;
-
-        while i1 < num_rows && lookup[i0] == lookup[i1] {
-            if lookup[i0].contains("#") {
-                count = i1 - row_index;
-            }
-            if i0 == 0 {
-                break
-            } else {
-                i0 -= 1;
-                i1 += 1;
-            }
-        }
-
-        counts.push(count);
-    }
-
-    counts
-}
-
-fn index_of_max(v: &Vec<usize>) -> usize {
-    let mut max = 0;
-
-    for i in 1..v.len() {
-        if v[i] > v[max] {
-            max = i;
-        }
-    }
-
-    max
 }
 
 #[cfg(test)]
@@ -251,92 +201,6 @@ mod day_13_pt1_tests {
     }
 
     #[test]
-    fn test_col_reflection_counts() {
-        let pattern = vec![
-            vec!['#', '.', '#', '#', '.', '.', '#', '#', '.'], 
-            vec!['.', '.', '#', '.', '#', '#', '.', '#', '.'], 
-            vec!['#', '#', '.', '.', '.', '.', '.', '.', '#'], 
-            vec!['#', '#', '.', '.', '.', '.', '.', '.', '#'], 
-            vec!['.', '.', '#', '.', '#', '#', '.', '#', '.'], 
-            vec!['.', '.', '#', '#', '.', '.', '#', '#', '.'], 
-            vec!['#', '.', '#', '.', '#', '#', '.', '#', '.'], 
-        ];
-
-        let col_index_to_check = 4;
-        let expected_reflection_count = 4;
-
-        let reflection_counts_lookup = col_reflection_counts(&pattern);
-
-        assert_eq!(expected_reflection_count, reflection_counts_lookup[col_index_to_check]);
-    }
-
-    #[test]
-    fn test_reflection_counts_no_mirrors() {
-        let pattern = vec![
-            vec!['.', '.', '.'], 
-            vec!['.', '.', '.'], 
-            vec!['.', '.', '.'], 
-        ];
-
-        let reflection_counts_lookup = col_reflection_counts(&pattern);
-
-        for i in 0..2 {
-            assert_eq!(0, reflection_counts_lookup[i]);
-        }
-
-        let reflection_counts_lookup = row_reflection_counts(&pattern);
-
-        for i in 0..2 {
-            assert_eq!(0, reflection_counts_lookup[i]);
-        }
-
-    }
-
-    #[test]
-    fn test_reflection_counts_are_bounded_by_outer_mirrors() {
-        let pattern = vec![
-            vec!['.', '.', '.', '.'], 
-            vec!['.', '#', '#', '.'], 
-            vec!['.', '#', '#', '.'], 
-            vec!['.', '.', '.', '.'], 
-        ];
-
-        let reflection_counts_lookup = col_reflection_counts(&pattern);
-
-        assert_eq!(1, reflection_counts_lookup[1]);
-
-        let reflection_counts_lookup = row_reflection_counts(&pattern);
-
-        assert_eq!(1, reflection_counts_lookup[1]);
-    }
-
-    #[test]
-    fn test_row_reflection_counts() {
-        let pattern = vec![
-            vec!['#', '.', '.', '.', '#', '#', '.', '.', '#'], 
-            vec!['#', '.', '.', '.', '.', '#', '.', '.', '#'], 
-            vec!['.', '.', '#', '#', '.', '.', '#', '#', '#'], 
-            vec!['#', '#', '#', '#', '#', '.', '#', '#', '.'], 
-            vec!['#', '#', '#', '#', '#', '.', '#', '#', '.'], 
-            vec!['.', '.', '#', '#', '.', '.', '#', '#', '#'], 
-            vec!['#', '.', '.', '.', '.', '#', '.', '.', '#'], 
-        ];
-
-        let row_index_to_check = 3;
-        let expected_reflection_count = 3;
-
-        let reflection_counts_lookup = row_reflection_counts(&pattern);
-
-        assert_eq!(expected_reflection_count, reflection_counts_lookup[row_index_to_check]);
-    }
-
-    #[test]
-    fn test_index_of_max() {
-        let v = vec![0, 4, 200, 3, 20];
-        assert_eq!(2, index_of_max(&v));
-    }
-
-    #[test]
     fn test_parse_patterns() {
         let contents = "#.##..##.
 ..#.##.#.
@@ -378,20 +242,5 @@ mod day_13_pt1_tests {
 #....#..#";
         
         assert_eq!(405, pt1(contents));
-    }
-
-    #[test]
-    fn test_no_reflection() {
-        let contents = "#.
-..
-##
-..
-..
-#.
-
-#.##..#
-#..#..#";
-        
-        assert_eq!(0, pt1(contents));
     }
 }
