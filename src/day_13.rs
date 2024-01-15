@@ -6,61 +6,31 @@ pub fn run() {
     println!("pt2: {}", pt2(&contents));
 }
 
+fn points_of_reflection(pattern: &Vec<Vec<char>>) -> (Option<usize>, Option<usize>) {
+    let horizontal_point_of_reflection = point_of_reflection_index(&pattern);
+
+    let transposed_pattern = transpose_pattern(&pattern);
+
+    let vertical_point_of_reflection = point_of_reflection_index(&transposed_pattern);
+
+    (horizontal_point_of_reflection, vertical_point_of_reflection)
+}
+
 fn pt1(contents: &str) -> usize {
     let mut answer = 0;
 
     let patterns = parse_patterns(contents);
 
     for pattern in patterns {
-        let lookup = col_reflection_key_lookup(&pattern);
+        let (horizontal_point, vertical_point) = points_of_reflection(&pattern);
 
-        let num_cols = pattern[0].len(); // TODO replace with lookup length
-
-        let mut reflected_col_index = None;
-
-        for col_index in 0..num_cols - 1 {
-            let mut i0 = col_index;
-            let mut i1 = col_index + 1;
-
-            while lookup[i0] == lookup[i1] {
-                if i0 == 0 || i1 == num_cols - 1 {
-                    reflected_col_index = Some(col_index);
-                    break
-                } else {
-                    i0 -= 1;
-                    i1 += 1;
-                }
-            }
-        }
-
-        if let Some(col_index) = reflected_col_index {
-            answer += col_index + 1;
-            continue
-        }
-
-        let lookup = row_reflection_key_lookup(&pattern);
-
-        let num_rows = lookup.len();
-
-        let mut reflected_row_index = None;
-
-        for row_index in 0..num_rows - 1 {
-            let mut i0 = row_index;
-            let mut i1 = row_index + 1;
-
-            while lookup[i0] == lookup[i1] {
-                if i0 == 0 || i1 == num_rows - 1 {
-                    reflected_row_index = Some(row_index);
-                    break
-                } else {
-                    i0 -= 1;
-                    i1 += 1;
-                }
-            }
-        }
-
-        if let Some(row_index) = reflected_row_index {
+        if let Some(row_index) = horizontal_point {
             answer += 100 * (row_index + 1);
+            continue;
+        }
+
+        if let Some(col_index) = vertical_point {
+            answer += col_index + 1;
         }
     }
 
@@ -92,16 +62,6 @@ fn parse_patterns(contents: &str) -> Vec<Vec<Vec<char>>> {
     patterns
 }
 
-fn col_reflection_key(pattern: &Vec<Vec<char>>, col_index: usize) -> String {
-    let mut key = String::new();
-
-    for line in pattern {
-        key.push(line[col_index]);
-    }
-
-    key
-}
-
 fn row_reflection_key(pattern: &Vec<Vec<char>>, row_index: usize) -> String {
     let mut key = String::new();
 
@@ -112,14 +72,6 @@ fn row_reflection_key(pattern: &Vec<Vec<char>>, row_index: usize) -> String {
     key
 }
 
-fn col_reflection_key_lookup(pattern: &Vec<Vec<char>>) -> Vec<String> {
-    let mut lookup = vec![];
-    for col_index in 0..pattern[0].len() {
-        lookup.push(col_reflection_key(&pattern, col_index));
-    }
-    lookup
-}
-
 fn row_reflection_key_lookup(pattern: &Vec<Vec<char>>) -> Vec<String> {
     let mut lookup = vec![];
     for row_index in 0..pattern.len() {
@@ -128,33 +80,56 @@ fn row_reflection_key_lookup(pattern: &Vec<Vec<char>>) -> Vec<String> {
     lookup
 }
 
+fn point_of_reflection_index(pattern: &Vec<Vec<char>>) -> Option<usize> {
+    let lookup = row_reflection_key_lookup(&pattern);
+
+    let mut reflection_index = None;
+
+    for row_index in 0..lookup.len() - 1 {
+        let mut i0 = row_index;
+        let mut i1 = row_index + 1;
+
+        while lookup[i0] == lookup[i1] {
+            if i0 == 0 || i1 == lookup.len() - 1 {
+                reflection_index = Some(row_index);
+                break;
+            } else {
+                i0 -= 1;
+                i1 += 1;
+            }
+        }
+    }
+
+    reflection_index
+}
+
+fn transpose_pattern(pattern: &Vec<Vec<char>>) -> Vec<Vec<char>> {
+    let pattern_height = pattern.len();
+    let pattern_width = pattern[0].len();
+
+    let mut transposed: Vec<Vec<char>> = vec![];
+
+    for i in 0..pattern_width {
+        let mut row = vec![];
+        for j in 0..pattern_height {
+            row.push(pattern[j][i]);
+        }
+        transposed.push(row);
+    }
+
+    transposed
+}
+
 #[cfg(test)]
 mod day_13_pt1_tests {
     use super::*;
 
     #[test]
-    fn test_col_reflection_key() {
-        let pattern = vec![
-            vec!['#', '.', '#'], 
-            vec!['.', '.', '#'], 
-            vec!['#', '#', '.'], 
-            vec!['#', '#', '.'], 
-            vec!['.', '.', '#'], 
-            vec!['.', '.', '#'], 
-            vec!['#', '.', '#']
-        ];
-
-        assert_eq!("#.##..#", col_reflection_key(&pattern, 0));
-        assert_eq!("..##...", col_reflection_key(&pattern, 1));
-        assert_eq!("##..###", col_reflection_key(&pattern, 2));
-    }
-
-    #[test]
     fn test_row_reflection_key() {
         let pattern = vec![
-            vec!['#', '.', '#'], 
-            vec!['.', '.', '#'], 
-            vec!['#', '#', '.'], 
+            vec!['#', '.', '#'],
+            vec!['.', '.', '#'],
+            vec!['#', '#', '.'],
         ];
 
         assert_eq!("#.#", row_reflection_key(&pattern, 0));
@@ -163,39 +138,14 @@ mod day_13_pt1_tests {
     }
 
     #[test]
-    fn test_col_reflection_key_lookup() {
-        let pattern = vec![
-            vec!['#', '.', '#'], 
-            vec!['.', '.', '#'], 
-            vec!['#', '#', '.'], 
-            vec!['#', '#', '.'], 
-            vec!['.', '.', '#'], 
-            vec!['.', '.', '#'], 
-            vec!['#', '.', '#']
-        ];
-
-        let expected_lookup = vec![
-            "#.##..#",
-            "..##...",
-            "##..###",
-        ];
-
-        assert_eq!(expected_lookup, col_reflection_key_lookup(&pattern));
-    }
-
-    #[test]
     fn test_row_reflection_key_lookup() {
         let pattern = vec![
-            vec!['#', '.', '#'], 
-            vec!['.', '.', '#'], 
-            vec!['#', '#', '.'], 
+            vec!['#', '.', '#'],
+            vec!['.', '.', '#'],
+            vec!['#', '#', '.'],
         ];
 
-        let expected_lookup = vec![
-            "#.#",
-            "..#",
-            "##.",
-        ];
+        let expected_lookup = vec!["#.#", "..#", "##."];
 
         assert_eq!(expected_lookup, row_reflection_key_lookup(&pattern));
     }
@@ -240,7 +190,7 @@ mod day_13_pt1_tests {
 #####.##.
 ..##..###
 #....#..#";
-        
+
         assert_eq!(405, pt1(contents));
     }
 }
