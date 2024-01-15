@@ -1,5 +1,5 @@
-use std::fs;
 use std::collections::HashMap;
+use std::fs;
 
 pub fn run() {
     let contents = fs::read_to_string("12.txt").unwrap();
@@ -9,19 +9,24 @@ pub fn run() {
 
 fn valid(pattern: &Vec<usize>, pattern_index: usize, broken_count: usize) -> bool {
     if pattern_index == pattern.len() && broken_count == 0 {
-        return true
+        return true;
     }
 
     if pattern_index == pattern.len() - 1 {
-        return pattern[pattern_index] == broken_count
+        return pattern[pattern_index] == broken_count;
     }
 
     false
 }
 
-fn score(springs: &Vec<char>, pattern: &Vec<usize>, memo_key: [usize; 3], memo: &mut HashMap<[usize; 3], usize>) -> usize {
+fn score(
+    springs: &Vec<char>,
+    pattern: &Vec<usize>,
+    memo_key: [usize; 3],
+    memo: &mut HashMap<[usize; 3], usize>,
+) -> usize {
     if let Some(answer) = memo.get(&memo_key) {
-        return *answer
+        return *answer;
     }
 
     let [springs_index, pattern_index, broken_count] = memo_key;
@@ -64,10 +69,13 @@ fn pt1(contents: &str) -> usize {
     for line in contents.lines() {
         let (springs, pattern) = line.split_once(' ').unwrap();
         let springs: Vec<_> = springs.chars().collect();
-        let pattern = pattern.split(',').map(|s| s.parse::<usize>().unwrap()).collect();
+        let pattern = pattern
+            .split(',')
+            .map(|s| s.parse::<usize>().unwrap())
+            .collect();
 
         let mut memo = HashMap::new();
-        
+
         answer += score(&springs, &pattern, [0, 0, 0], &mut memo);
     }
 
@@ -84,7 +92,10 @@ fn pt2(contents: &str) -> usize {
         let springs: Vec<_> = springs.chars().collect();
 
         let pattern = [pattern; 5].join(",");
-        let pattern = pattern.split(',').map(|s| s.parse::<usize>().unwrap()).collect();
+        let pattern = pattern
+            .split(',')
+            .map(|s| s.parse::<usize>().unwrap())
+            .collect();
 
         let mut memo = HashMap::new();
 
