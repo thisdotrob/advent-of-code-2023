@@ -4,6 +4,7 @@ pub fn run() {
     let contents = fs::read_to_string("15.txt").unwrap();
     let contents = contents.trim_end();
     println!("pt1: {}", pt1(&contents));
+    println!("pt2: {}", pt2(&contents));
 }
 
 fn pt1(contents: &str) -> usize {
@@ -28,4 +29,41 @@ fn hash(step: &str) -> usize {
     }
 
     value
+}
+
+#[derive(Clone, Copy)]
+struct Lens<'a> {
+    focal_length: usize,
+    label: &'a str,
+}
+
+#[derive(Clone, Copy)]
+struct Box<'a> {
+    lenses: [Option<Lens<'a>>; 256],
+}
+
+impl<'a> Box<'_> {
+    fn new() -> Box<'a> {
+        Box { lenses: [None; 256] }
+    }
+}
+
+struct Boxes<'a> {
+    by_hash: [Box<'a>; 256],
+}
+
+impl<'a> Boxes<'_> {
+    fn new() -> Boxes<'a> {
+        Boxes {
+            by_hash: [Box::new(); 256],
+        }
+    }
+}
+
+fn pt2(contents: &str) -> usize {
+    let mut focusing_power = 0;
+
+    let boxes = Boxes::new();
+
+    focusing_power
 }
