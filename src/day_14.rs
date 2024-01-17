@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 
 pub fn run() {
@@ -22,8 +23,88 @@ fn pt1(contents: &str) -> usize {
     answer
 }
 
-fn pt2(_contents: &str) -> usize {
-    let answer = 0;
+fn pt2(contents: &str) -> usize {
+    let mut answer = 0;
+
+    let platform = parse(contents);
+
+    let mut platform = transpose(&platform);
+
+    let mut previously_seen: HashMap<String, (usize, Option<usize>)> = HashMap::new();
+
+    let mut cycle_count = 0;
+
+    loop {
+        cycle_count += 1;
+
+        // North
+        tilt_east(&mut platform);
+        platform = transpose(&platform);
+        // West
+        tilt_east(&mut platform);
+        platform = transpose(&platform);
+
+        // South
+        tilt_east(&mut platform);
+        platform = transpose(&platform);
+
+        // East
+        tilt_east(&mut platform);
+        platform = transpose(&platform);
+
+        let key = platform_as_key(&platform);
+
+        let (previous_cycle_count, _) = previously_seen.entry(key.clone()).or_insert((cycle_count, None));
+
+        if cycle_count != *previous_cycle_count {
+            let diff = cycle_count - *previous_cycle_count;
+            previously_seen.insert(key, (cycle_count, Some(diff)));
+        }
+
+        let diffs: Vec<_> = previously_seen.values().filter_map(|(previous_cycle_count, diff)| {
+            if cycle_count - previous_cycle_count < 200 {
+                Some(diff)
+            } else {
+                None
+            }
+        }).collect();
+
+        if diffs.len() > 1 && !diffs.iter().any(|diff| diff.is_none()) {
+            let first = diffs[0].unwrap();
+            if diffs.iter().all(|diff| diff.unwrap() == first) {
+                break
+            };
+        };
+    }
+
+    let repeating_diff = previously_seen.values().next().unwrap();
+    let (_, repeating_diff) = repeating_diff;
+    let repeating_diff = repeating_diff.unwrap();
+
+    let remaining_cycles = 1_000_000_000 - cycle_count;
+
+    let remaining_cycles = remaining_cycles % repeating_diff;
+
+    for _ in 0..remaining_cycles {
+        // North
+        tilt_east(&mut platform);
+        platform = transpose(&platform);
+        // West
+        tilt_east(&mut platform);
+        platform = transpose(&platform);
+
+        // South
+        tilt_east(&mut platform);
+        platform = transpose(&platform);
+
+        // East
+        tilt_east(&mut platform);
+        platform = transpose(&platform);
+    }
+
+    for row in &platform {
+        answer += row_load(&row);
+    }
 
     answer
 }
@@ -90,6 +171,10 @@ fn row_load(row: &Vec<char>) -> usize {
         }
     }
     answer
+}
+
+fn platform_as_key(platform: &Vec<Vec<char>>) -> String {
+    platform.iter().map(|row| row.iter().collect::<String>()).collect::<String>()
 }
 
 #[cfg(test)]
@@ -184,5 +269,59 @@ O.#..O.#.#
 #OO..#....";
 
         assert_eq!(136, pt1(platform));
+    }
+}
+
+#[cfg(test)]
+mod day_14_pt_2_tests {
+    use super::*;
+
+    #[test]
+    fn test_transpose_anti_clockwise() {
+        let platform = vec![
+            vec!['O', '.', '.', '.', '.', '#', '.', '.', '.', '.'],
+            vec!['O', '.', 'O', 'O', '#', '.', '.', '.', '.', '#'],
+            vec!['.', '.', '.', '.', '.', '#', '#', '.', '.', '.'],
+            vec!['O', 'O', '.', '#', 'O', '.', '.', '.', '.', 'O'],
+            vec!['.', 'O', '.', '.', '.', '.', '.', 'O', '#', '.'],
+            vec!['O', '.', '#', '.', '.', 'O', '.', '#', '.', '#'],
+            vec!['.', '.', 'O', '.', '.', '#', 'O', '.', '.', 'O'],
+            vec!['.', '.', '.', '.', '.', '.', '.', 'O', '.', '.'],
+            vec!['#', '.', '.', '.', '.', '#', '#', '#', '.', '.'],
+            vec!['#', 'O', 'O', '.', '.', '#', '.', '.', '.', '.'],
+        ];
+
+        let transposed_platform = transpose_anti_clockwise(&platform);
+
+        let expected = vec![
+            vec!['#', '#', '.', '.', 'O', '.', 'O', '.', 'O', 'O'],
+            vec!['O', '.', '.', '.', '.', 'O', 'O', '.', '.', '.'],
+            vec!['O', '.', '.', 'O', '#', '.', '.', '.', 'O', '.'],
+            vec!['.', '.', '.', '.', '.', '.', '#', '.', 'O', '.'],
+            vec!['.', '.', '.', '.', '.', '.', 'O', '.', '#', '.'],
+            vec!['#', '#', '.', '#', 'O', '.', '.', '#', '.', '#'],
+            vec!['.', '#', '.', 'O', '.', '.', '.', '#', '.', '.'],
+            vec!['.', '#', 'O', '.', '#', 'O', '.', '.', '.', '.'],
+            vec!['.', '.', '.', '.', '.', '#', '.', '.', '.', '.'],
+            vec!['.', '.', '.', 'O', '#', '.', 'O', '.', '#', '.'],
+        ];
+
+        assert_eq!(expected, transposed_platform);
+    }
+
+    #[test]
+    fn test_pt2() {
+        let platform = "O....#....
+O.OO#....#
+.....##...
+OO.#O....O
+.O.....O#.
+O.#..O.#.#
+..O..#O..O
+.......O..
+#....###..
+#OO..#....";
+
+        assert_eq!(64, pt2(platform));
     }
 }
