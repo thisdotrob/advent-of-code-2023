@@ -34,7 +34,7 @@ fn pt2(contents: &str) -> usize {
 
     let mut cycle_count = 0;
 
-    let mut repeating_diff = None;
+    let repeating_diff: usize;
 
     loop {
         cycle_count += 1;
@@ -79,7 +79,7 @@ fn pt2(contents: &str) -> usize {
         if diffs.len() > 1 && !diffs.iter().any(|diff| diff.is_none()) {
             let first = diffs[0].unwrap();
             if diffs.iter().all(|diff| diff.unwrap() == first) {
-                repeating_diff = Some(first);
+                repeating_diff = first;
                 break;
             };
         };
@@ -87,7 +87,7 @@ fn pt2(contents: &str) -> usize {
 
     let remaining_cycles = 1_000_000_000 - cycle_count;
 
-    let remaining_cycles = remaining_cycles % repeating_diff.unwrap();
+    let remaining_cycles = remaining_cycles % repeating_diff;
 
     for _ in 0..remaining_cycles {
         // North
