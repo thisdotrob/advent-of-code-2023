@@ -54,25 +54,30 @@ fn pt2(contents: &str) -> usize {
 
         let key = platform_as_key(&platform);
 
-        let (previous_cycle_count, _) = previously_seen.entry(key.clone()).or_insert((cycle_count, None));
+        let (previous_cycle_count, _) = previously_seen
+            .entry(key.clone())
+            .or_insert((cycle_count, None));
 
         if cycle_count != *previous_cycle_count {
             let diff = cycle_count - *previous_cycle_count;
             previously_seen.insert(key, (cycle_count, Some(diff)));
         }
 
-        let diffs: Vec<_> = previously_seen.values().filter_map(|(previous_cycle_count, diff)| {
-            if cycle_count - previous_cycle_count < 200 {
-                Some(diff)
-            } else {
-                None
-            }
-        }).collect();
+        let diffs: Vec<_> = previously_seen
+            .values()
+            .filter_map(|(previous_cycle_count, diff)| {
+                if cycle_count - previous_cycle_count < 200 {
+                    Some(diff)
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         if diffs.len() > 1 && !diffs.iter().any(|diff| diff.is_none()) {
             let first = diffs[0].unwrap();
             if diffs.iter().all(|diff| diff.unwrap() == first) {
-                break
+                break;
             };
         };
     }
@@ -174,7 +179,10 @@ fn row_load(row: &Vec<char>) -> usize {
 }
 
 fn platform_as_key(platform: &Vec<Vec<char>>) -> String {
-    platform.iter().map(|row| row.iter().collect::<String>()).collect::<String>()
+    platform
+        .iter()
+        .map(|row| row.iter().collect::<String>())
+        .collect::<String>()
 }
 
 #[cfg(test)]
