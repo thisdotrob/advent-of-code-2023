@@ -32,8 +32,6 @@ fn pt2(contents: &str) -> usize {
             '=' => {
                 let focal_length: String = focal_length.unwrap();
                 let focal_length: usize = focal_length.parse().unwrap();
-                // let lens = Lens::new(focal_length, &label);
-                // boxes.add_lens(box_hash, lens);
                 boxes.add_lens(box_hash, focal_length, label)
             },
             _ => panic!("unexpected operator")
@@ -123,24 +121,6 @@ impl<'a> Box<'a> {
         }
     }
 
-    // fn add_lens(&mut self, new_lens: Lens<'a>) {
-    //     for i in dbg!(0..self.lenses.len()) {
-    //         match dbg!(self.lenses[i]) {
-    //             Some(lens) => {
-    //                 if lens.label == new_lens.label {
-    //                     self.lenses[i] = Some(new_lens);
-    //                     break
-    //                 }
-    //             },
-    //             None => {
-    //                 self.lenses[i] = Some(new_lens);
-    //                 break
-    //             },
-    //         }
-    //     }
-    //     dbg!(self.lenses);
-    // }
-
     fn add_lens(&mut self, focal_length: usize, label: String) {
         let new_lens = Lens::new(focal_length, &label);
         for i in dbg!(0..self.lenses.len()) {
@@ -193,12 +173,6 @@ impl<'a> Boxes<'a> {
         r#box.add_lens(focal_length, label);
         self.by_hash[box_hash] = r#box;
     }
-
-    // fn add_lens(&mut self, box_hash: usize, new_lens: Lens<'a>) {
-    //     let mut r#box = self.by_hash[box_hash];
-    //     r#box.add_lens(new_lens);
-    //     self.by_hash[box_hash] = r#box;
-    // }
     
     fn focusing_power(&self) -> usize {
         let mut sum = 0;
