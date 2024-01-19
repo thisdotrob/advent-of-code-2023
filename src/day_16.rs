@@ -8,17 +8,12 @@ pub fn run() {
 }
 
 fn pt1<const N: usize>(input: &str) -> usize {
-    let sum = 0;
-
     let mut contraption: Contraption<N> = Contraption::from(input);
-
-    dbg!(contraption.tiles);
-    dbg!(contraption.energized_tiles);
 
     let start_coords = (0, 0);
     contraption.start_beam(start_coords, Direction::Right);
 
-    sum
+    contraption.total_energized_tiles()
 }
 
 struct Contraption<const N: usize> {
@@ -32,13 +27,17 @@ impl<const N: usize> Contraption<N> {
 
         let mut direction = start_direction;
 
-        // TODO need to implement logic to see if the (x, y) & direction combo has been visited
-        // before. If it has, this means a loop is starting again and we need to break.
-
         loop {
-            self.energized_tiles[y][x] = true;
-
             let tile = self.tiles[y][x];
+
+            let energized = self.energized_tiles[y][x];
+
+            if let ('-' | '|', true) = (tile, energized) {
+                // means a loop is about to start and the beam will never finish travelling
+                break;
+            }
+
+            self.energized_tiles[y][x] = true;
 
             direction = match (tile, &direction) {
                 ('.', _) => direction,
@@ -98,6 +97,13 @@ impl<const N: usize> Contraption<N> {
                 }
             }
         }
+    }
+
+    fn total_energized_tiles(&self) -> usize {
+        self.energized_tiles
+            .map(|row| row.into_iter().filter(|is_energized| *is_energized).count())
+            .iter()
+            .sum()
     }
 }
 
