@@ -6,8 +6,10 @@ use std::fs;
 pub fn run() {
     let example_input = fs::read_to_string("17_example.txt").unwrap();
     println!("pt1 example: {}", pt1::<13>(&example_input));
+    println!("pt2 example: {}", pt2::<13>(&example_input));
     let input = fs::read_to_string("17.txt").unwrap();
     println!("pt1: {}", pt1::<141>(&input));
+    println!("pt2: {}", pt2::<141>(&input));
 }
 
 fn pt1<const N: usize>(input: &str) -> usize {
@@ -103,6 +105,115 @@ fn pt1<const N: usize>(input: &str) -> usize {
                 })
             }
         }
+        seen.insert((state.location, state.direction, state.steps_in_direction));
+    }
+
+    minimum_heat_loss
+}
+
+fn pt2<const N: usize>(input: &str) -> usize {
+    let heat_loss_map: HeatLossMap<N> = HeatLossMap::from(input);
+
+    let mut heap = BinaryHeap::new();
+    let mut seen = HashSet::new();
+
+    heap.push(PathState {
+        heat_loss: 0,
+        location: (0, 0),
+        direction: Direction::Right,
+        steps_in_direction: 1,
+    });
+
+    heap.push(PathState {
+        heat_loss: 0,
+        location: (0, 0),
+        direction: Direction::Down,
+        steps_in_direction: 1,
+    });
+
+    let mut minimum_heat_loss = usize::MAX;
+
+    while let Some(state) = heap.pop() {
+        if seen.contains(&(state.location, state.direction, state.steps_in_direction)) {
+            continue;
+        };
+
+        if state.location == (N - 1, N - 1) {
+            if state.heat_loss < minimum_heat_loss {
+                minimum_heat_loss = state.heat_loss;
+            }
+            continue;
+        }
+
+        let (mut x, mut y) = state.location;
+
+        match state.direction {
+            Direction::Up => {
+                if y == 0 {
+                    continue;
+                } else {
+                    y -= 1
+                }
+            }
+            Direction::Down => {
+                if y == N - 1 {
+                    continue;
+                } else {
+                    y += 1
+                }
+            }
+            Direction::Left => {
+                if x == 0 {
+                    continue;
+                } else {
+                    x -= 1
+                }
+            }
+            Direction::Right => {
+                if x == N - 1 {
+                    continue;
+                } else {
+                    x += 1
+                }
+            }
+        }
+
+        let heat_loss = state.heat_loss + heat_loss_map.blocks[y][x];
+
+        if state.steps_in_direction < 4 {
+            heap.push(PathState {
+                heat_loss,
+                location: (x, y),
+                direction: state.direction,
+                steps_in_direction: state.steps_in_direction + 1,
+            })
+        } else {
+            for direction in [
+                Direction::Up,
+                Direction::Down,
+                Direction::Left,
+                Direction::Right,
+            ] {
+                if state.direction == direction {
+                    if state.steps_in_direction < 10 {
+                        heap.push(PathState {
+                            heat_loss,
+                            location: (x, y),
+                            direction,
+                            steps_in_direction: state.steps_in_direction + 1,
+                        })
+                    }
+                } else if state.direction != direction.opposite() {
+                    heap.push(PathState {
+                        heat_loss,
+                        location: (x, y),
+                        direction,
+                        steps_in_direction: 1,
+                    })
+                }
+            }
+        }
+
         seen.insert((state.location, state.direction, state.steps_in_direction));
     }
 
