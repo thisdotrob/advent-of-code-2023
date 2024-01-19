@@ -3,8 +3,10 @@ use std::fs;
 pub fn run() {
     let example_input = fs::read_to_string("16_example.txt").unwrap();
     println!("pt1 example: {}", pt1::<10>(&example_input));
+    println!("pt2 example: {}", pt2::<10>(&example_input));
     let input = fs::read_to_string("16.txt").unwrap();
     println!("pt1: {}", pt1::<110>(&input));
+    println!("pt2: {}", pt2::<110>(&input));
 }
 
 fn pt1<const N: usize>(input: &str) -> usize {
@@ -14,6 +16,34 @@ fn pt1<const N: usize>(input: &str) -> usize {
     contraption.start_beam(start_coords, Direction::Right);
 
     contraption.total_energized_tiles()
+}
+
+fn pt2<const N: usize>(input: &str) -> usize {
+    let mut contraption: Contraption<N> = Contraption::from(input);
+
+    let mut starts = vec![];
+
+    for i in 0..N {
+        starts.push(((0, i), Direction::Right));
+        starts.push(((N - 1, i), Direction::Left));
+        starts.push(((i, 0), Direction::Down));
+        starts.push(((i, N - 1), Direction::Up));
+    }
+
+    let mut max_energized_tiles = 0;
+
+    for (start_coords, direction) in starts {
+        contraption.reset_energized_tiles();
+        contraption.start_beam(start_coords, direction);
+
+        let energized_tiles = contraption.total_energized_tiles();
+
+        if energized_tiles > max_energized_tiles {
+            max_energized_tiles = energized_tiles;
+        }
+    }
+
+    max_energized_tiles
 }
 
 struct Contraption<const N: usize> {
@@ -104,6 +134,10 @@ impl<const N: usize> Contraption<N> {
             .map(|row| row.into_iter().filter(|is_energized| *is_energized).count())
             .iter()
             .sum()
+    }
+
+    fn reset_energized_tiles(&mut self) {
+        self.energized_tiles = self.energized_tiles.map(|row| row.map(|_| false));
     }
 }
 
