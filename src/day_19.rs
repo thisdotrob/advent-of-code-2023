@@ -1,4 +1,5 @@
 use std::fs;
+use std::collections::HashMap;
 
 pub fn run() {
     let example_input = fs::read_to_string("19_example.txt").unwrap();
@@ -20,19 +21,19 @@ fn pt2(input: &str) -> i32 {
     0
 }
 
-fn parse_input(input: &str) -> (Vec<Workflow>, Vec<Part>) {
+fn parse_input(input: &str) -> (HashMap<&str, Workflow>, Vec<Part>) {
     let (workflows_str, parts_str) = input.split_once("\n\n").unwrap();
-    let rules = parse_workflows(workflows_str);
+    let workflows = parse_workflows(workflows_str);
     let parts = parse_parts(parts_str);
-    (rules, parts)
+    (workflows, parts)
 }
 
-fn parse_workflows(workflows_str: &str) -> Vec<Workflow> {
+fn parse_workflows(workflows_str: &str) -> HashMap<&str, Workflow> {
     workflows_str.lines().map(|line| {
         let (name, rest) = line.split_once("{").unwrap();
         let rules_str = &rest[..rest.len() - 1]; // remove the trailing }
         let rules = parse_rules(rules_str);  
-        Workflow { name, rules }
+        (name, Workflow { name, rules })
     }).collect()
 }
 
