@@ -7,7 +7,7 @@ pub fn run() {
     println!("pt2 example: {}", pt2(&example_input));
     let input = fs::read_to_string("19.txt").unwrap();
     println!("pt1: {}", pt1(&input));
-    // println!("pt2: {}", pt2(&input));
+    println!("pt2: {}", pt2(&input));
 }
 
 fn pt1(input: &str) -> u64 {
@@ -76,12 +76,11 @@ fn pt2(input: &str) -> u64 {
     let mut answer = 0;
 
     for range in accepted_part_ranges {
-        dbg!(&range);
-        let num_distinct_combinations = (range.x[1] - range.x[0])
-            * (range.m[1] - range.m[0])
-            * (range.a[1] - range.a[0])
-            * (range.s[1] - range.s[0]);
-        answer += dbg!(num_distinct_combinations);
+        let num_distinct_combinations = (1 + range.x[1] - range.x[0])
+            * (1 + range.m[1] - range.m[0])
+            * (1 + range.a[1] - range.a[0])
+            * (1 + range.s[1] - range.s[0]);
+        answer += num_distinct_combinations;
     }
 
     answer
@@ -94,6 +93,7 @@ fn apply_workflow(
     rule_index: usize,
 ) -> Vec<PartRange> {
     let workflow = &workflows[destination_workflow];
+
     if rule_index == workflow.rules.len() {
         return vec![];
     }
@@ -218,7 +218,7 @@ fn range_remainder(original_range: [u64; 2], range: [u64; 2]) -> [u64; 2] {
     if range[1] != original_range[1] {
         [range[1] + 1, original_range[1]]
     } else if range[0] != original_range[0] {
-        [original_range[0], range[0] + 1]
+        [original_range[0], range[0] - 1]
     } else {
         original_range
     }
@@ -343,4 +343,45 @@ struct PartRange {
     m: [u64; 2],
     a: [u64; 2],
     s: [u64; 2],
+}
+
+#[cfg(test)]
+mod day_19_pt2_tests {
+    use super::*;
+
+    #[test]
+    fn test_minimal_input() {
+        let input = "in{a<2001:A,R}\n\n";
+
+        let expected = 2000 * 4000 * 4000 * 4000;
+        assert_eq!(expected, pt2(input));
+    }
+
+    #[test]
+    fn test_minimal_input_2() {
+        let input = "in{a<2001:A,m>1000:A,R}\n\n";
+
+        let expected = (2000 * 4000 * 4000 * 4000) + (2000 * 3000 * 4000 * 4000);
+        assert_eq!(expected, pt2(input));
+    }
+
+    #[test]
+    fn test_minimal_input_3() {
+        let input = "in{a<2001:aaa,R}
+aaa{A}\n\n";
+
+        let expected = 2000 * 4000 * 4000 * 4000;
+        assert_eq!(expected, pt2(input));
+    }
+
+    #[test]
+    fn test_minimal_input_4() {
+        let input = "in{s<1351:px,qqz}
+px{a<2006:A,R}
+qqz{A}\n\n";
+
+        let mut expected = 4000 * 4000 * (4000 - 1350) * 4000;
+        expected += 4000 * 4000 * 2005 * 1350; // px
+        assert_eq!(expected, pt2(input));
+    }
 }
