@@ -1,3 +1,4 @@
+use bacon_sci::interp::lagrange;
 use std::collections::HashSet;
 use std::fs;
 
@@ -6,6 +7,7 @@ pub fn run() {
     println!("pt1 example: {}", pt1::<11>(&input, 6));
     let input = fs::read_to_string("21.txt").unwrap();
     println!("pt1: {}", pt1::<131>(&input, 64));
+    println!("pt2: {}", pt2::<131>(&input, 26501365));
 }
 
 fn pt1<const N: usize>(input: &str, steps_left: u64) -> usize {
@@ -20,17 +22,37 @@ fn pt1<const N: usize>(input: &str, steps_left: u64) -> usize {
     coords.len()
 }
 
+fn pt2<const N: usize>(_input: &str, steps_left: u64) -> f64 {
+    let num_gardens_needed = steps_left as usize / N;
 
-fn pt2<const N: usize>(input: &str, steps_left: u64) -> usize {
-    let garden: Garden<N> = Garden::from(input);
+    let remaining_steps = steps_left as usize - (num_gardens_needed * N);
 
-    let start_coord = start_coord(&garden);
+    let steps_left_values: [f64; 3] = [
+        (N + remaining_steps) as f64,
+        ((N * 2) + remaining_steps) as f64,
+        ((N * 3) + remaining_steps) as f64,
+    ];
 
-    let mut seen: Seen = HashSet::new();
+    // let garden: Garden<N> = Garden::from(input);
 
-    let coords = reachable_coords_infinite_garden(&garden, &start_coord, steps_left, &mut seen);
+    // let start_coord = start_coord(&garden);
 
-    coords.len()
+    // for steps_left in steps_left_values {
+    //     let steps_left = steps_left.try_into().unwrap();
+    //     let mut seen: Seen = HashSet::new();
+    //
+    //     let coords = reachable_coords_infinite_garden(&garden, &start_coord, steps_left, &mut seen);
+    //
+    //     println!("{}", coords.len());
+    // }
+
+    let reachable_counts = [33190_f64, 91987_f64, 180110_f64];
+
+    let poly = lagrange(&steps_left_values, &reachable_counts, 1e-6).unwrap();
+
+    let answer = poly.evaluate(steps_left as f64);
+
+    answer
 }
 
 fn start_coord<const N: usize>(garden: &Garden<N>) -> Coord {
@@ -39,10 +61,7 @@ fn start_coord<const N: usize>(garden: &Garden<N>) -> Coord {
         for col_index in 0..N {
             let char = row[col_index as usize];
             if char == 'S' {
-                return Coord(
-                    col_index.try_into().unwrap(),
-                    row_index.try_into().unwrap(),
-                );
+                return Coord(col_index.try_into().unwrap(), row_index.try_into().unwrap());
             }
         }
     }
@@ -141,9 +160,6 @@ fn reachable_coords_infinite_garden<const N: usize>(
     } else {
         coord.1 as usize
     };
-    
-    println!("{:?} coord", coord);
-    println!("{:?} (x, y)", (x, y));
 
     let symbol = garden.map[y][x];
 
@@ -152,7 +168,8 @@ fn reachable_coords_infinite_garden<const N: usize>(
             result.insert(*coord);
         } else {
             for coord in neighbour_coords_infinite_garden::<N>(coord) {
-                let reachable_coords = reachable_coords_infinite_garden(garden, &coord, steps_left - 1, seen);
+                let reachable_coords =
+                    reachable_coords_infinite_garden(garden, &coord, steps_left - 1, seen);
 
                 result.extend(reachable_coords);
             }
