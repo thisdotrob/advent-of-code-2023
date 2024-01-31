@@ -7,8 +7,10 @@ use std::fs;
 pub fn run() {
     let input = fs::read_to_string("22_example.txt").unwrap();
     println!("pt1 example: {}", pt1(&input));
+    println!("pt2 example: {}", pt2(&input));
     let input = fs::read_to_string("22.txt").unwrap();
     println!("pt1: {}", pt1(&input));
+    println!("pt2: {}", pt2(&input));
 }
 
 fn pt1(input: &str) -> usize {
@@ -57,6 +59,86 @@ fn pt1(input: &str) -> usize {
     }
 
     answer
+}
+
+fn pt2(input: &str) -> usize {
+    let bricks_by_z = parse_input(input);
+
+    let bricks_by_z = apply_gravity(bricks_by_z);
+
+    let mut supported_bricks: HashMap<usize, HashSet<usize>> = HashMap::new();
+    let mut supporting_bricks: HashMap<usize, HashSet<usize>> = HashMap::new();
+
+    for brick in bricks_by_z.iter().flatten() {
+        let min_z = brick.min_z();
+        let max_z = brick.max_z();
+        let supported_bricks_entry = supported_bricks.entry(brick.2).or_insert(HashSet::new());
+        let supporting_bricks_entry = supporting_bricks.entry(brick.2).or_insert(HashSet::new());
+        if max_z < bricks_by_z.len() - 1 {
+            for brick_above in bricks_by_z[max_z + 1..bricks_by_z.len()].iter().flatten() {
+                if brick_above.is_supported_by(brick) {
+                    supported_bricks_entry.insert(brick_above.2);
+                }
+            }
+        }
+        if min_z > 1 {
+            for brick_below in bricks_by_z[1..min_z].iter().flatten() {
+                if brick.is_supported_by(brick_below) {
+                    supporting_bricks_entry.insert(brick_below.2);
+                }
+            }
+        }
+    }
+
+    let mut answer = 0;
+
+    for brick in bricks_by_z.iter().flatten() {
+        let mut disintegrated_bricks = HashSet::new();
+        disintegrate_bricks(
+            brick.2,
+            &supported_bricks,
+            &supporting_bricks,
+            &mut disintegrated_bricks,
+        );
+        answer += disintegrated_bricks.len() - 1;
+    }
+
+    answer
+}
+
+fn disintegrate_bricks(
+    brick_label: usize,
+    supported_bricks: &HashMap<usize, HashSet<usize>>,
+    supporting_bricks: &HashMap<usize, HashSet<usize>>,
+    disintegrated_bricks: &mut HashSet<usize>,
+) {
+    disintegrated_bricks.insert(brick_label);
+
+    let supported_bricks_entry = supported_bricks.get(&brick_label).unwrap();
+
+    let mut next_bricks_to_check = HashSet::new();
+
+    for supported_brick in supported_bricks_entry {
+        let supporting_bricks_entry = supporting_bricks.get(&supported_brick).unwrap();
+        if supporting_bricks_entry
+            .difference(disintegrated_bricks)
+            .collect::<HashSet<_>>()
+            .len()
+            == 0
+        {
+            next_bricks_to_check.insert(*supported_brick);
+            disintegrated_bricks.insert(*supported_brick);
+        }
+    }
+
+    for brick in next_bricks_to_check {
+        disintegrate_bricks(
+            brick,
+            supported_bricks,
+            supporting_bricks,
+            disintegrated_bricks,
+        );
+    }
 }
 
 fn parse_input(input: &str) -> Vec<Vec<Brick>> {
