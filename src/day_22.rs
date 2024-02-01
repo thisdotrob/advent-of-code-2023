@@ -349,8 +349,8 @@ mod day_22_pt_1_tests {
         assert_eq!(2, bricks_by_z[2][0].2);
         assert_eq!(3, bricks_by_z[2][1].2);
         assert_eq!(2, bricks_by_z[3].len());
-        assert_eq!(4, bricks_by_z[3][0].2);
-        assert_eq!(5, bricks_by_z[3][1].2);
+        assert_eq!(5, bricks_by_z[3][0].2);
+        assert_eq!(4, bricks_by_z[3][1].2);
         assert_eq!(1, bricks_by_z[4].len());
         assert_eq!(6, bricks_by_z[4][0].2);
         assert_eq!(0, bricks_by_z[5].len());

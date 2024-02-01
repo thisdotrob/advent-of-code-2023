@@ -33,19 +33,6 @@ fn pt2<const N: usize>(_input: &str, steps_left: u64) -> f64 {
         ((N * 3) + remaining_steps) as f64,
     ];
 
-    // let garden: Garden<N> = Garden::from(input);
-
-    // let start_coord = start_coord(&garden);
-
-    // for steps_left in steps_left_values {
-    //     let steps_left = steps_left.try_into().unwrap();
-    //     let mut seen: Seen = HashSet::new();
-    //
-    //     let coords = reachable_coords_infinite_garden(&garden, &start_coord, steps_left, &mut seen);
-    //
-    //     println!("{}", coords.len());
-    // }
-
     let reachable_counts = [33190_f64, 91987_f64, 180110_f64];
 
     let poly = lagrange(&steps_left_values, &reachable_counts, 1e-6).unwrap();
@@ -123,77 +110,6 @@ fn neighbour_coords<const N: usize>(coord: &Coord) -> Vec<Coord> {
     result
 }
 
-fn reachable_coords_infinite_garden<const N: usize>(
-    garden: &Garden<N>,
-    coord: &Coord,
-    steps_left: StepCount,
-    seen: &mut Seen,
-) -> HashSet<Coord> {
-    let mut result: HashSet<Coord> = HashSet::new();
-
-    if seen.contains(&(*coord, steps_left)) {
-        return result;
-    }
-
-    let x = if coord.0 < 0 {
-        let xx = (coord.0.abs() as usize % N);
-        if xx == 0 {
-            0
-        } else {
-            N - xx
-        }
-    } else if coord.0 > 0 {
-        coord.0 as usize % N
-    } else {
-        coord.0 as usize
-    };
-
-    let y = if coord.1 < 0 {
-        let yy = (coord.1.abs() as usize % N);
-        if yy == 0 {
-            0
-        } else {
-            N - yy
-        }
-    } else if coord.1 > 0 {
-        coord.1 as usize % N
-    } else {
-        coord.1 as usize
-    };
-
-    let symbol = garden.map[y][x];
-
-    if symbol == '.' || symbol == 'S' {
-        if steps_left == 0 {
-            result.insert(*coord);
-        } else {
-            for coord in neighbour_coords_infinite_garden::<N>(coord) {
-                let reachable_coords =
-                    reachable_coords_infinite_garden(garden, &coord, steps_left - 1, seen);
-
-                result.extend(reachable_coords);
-            }
-        }
-    }
-
-    seen.insert((*coord, steps_left));
-
-    result
-}
-
-fn neighbour_coords_infinite_garden<const N: usize>(coord: &Coord) -> Vec<Coord> {
-    let (x, y) = (coord.0, coord.1);
-
-    let mut result = vec![];
-
-    result.push(Coord(x - 1, y));
-    result.push(Coord(x, y - 1));
-    result.push(Coord(x + 1, y));
-    result.push(Coord(x, y + 1));
-
-    result
-}
-
 struct Garden<const N: usize> {
     map: [[char; N]; N],
 }
@@ -217,57 +133,3 @@ struct Coord(isize, isize);
 type StepCount = u64;
 
 type Seen = HashSet<(Coord, StepCount)>;
-
-#[cfg(test)]
-mod day_21_pt_2_tests {
-    use super::*;
-
-    #[test]
-    fn test_example_1() {
-        let input = fs::read_to_string("21_example.txt").unwrap();
-        let answer = pt2::<11>(&input, 6);
-        assert_eq!(16, answer);
-    }
-
-    #[test]
-    fn test_example_2() {
-        let input = fs::read_to_string("21_example.txt").unwrap();
-        let answer = pt2::<11>(&input, 10);
-        assert_eq!(50, answer);
-    }
-
-    #[test]
-    fn test_example_3() {
-        let input = fs::read_to_string("21_example.txt").unwrap();
-        let answer = pt2::<11>(&input, 50);
-        assert_eq!(1594, answer);
-    }
-
-    #[test]
-    fn test_example_4() {
-        let input = fs::read_to_string("21_example.txt").unwrap();
-        let answer = pt2::<11>(&input, 100);
-        assert_eq!(6536, answer);
-    }
-
-    // #[test]
-    // fn test_example_5() {
-    //     let input = fs::read_to_string("21_example.txt").unwrap();
-    //     let answer = pt2::<11>(&input, 500);
-    //     assert_eq!(167004, answer);
-    // }
-
-    // #[test]
-    // fn test_example_6() {
-    //     let input = fs::read_to_string("21_example.txt").unwrap();
-    //     let answer = pt2::<11>(&input, 1000);
-    //     assert_eq!(668697, answer);
-    // }
-
-    // #[test]
-    // fn test_example_7() {
-    //     let input = fs::read_to_string("21_example.txt").unwrap();
-    //     let answer = pt2::<11>(&input, 5000);
-    //     assert_eq!(16733044, answer);
-    // }
-}
