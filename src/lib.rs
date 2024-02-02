@@ -14,6 +14,7 @@ mod day_20;
 mod day_21;
 mod day_22;
 mod day_23;
+mod day_24;
 mod day_3;
 mod day_4;
 mod day_5;
@@ -90,5 +91,8 @@ pub fn run() {
     println!();
     println!("========== Day 23 ==========");
     day_23::run();
+    println!();
+    println!("========== Day 24 ==========");
+    day_24::run();
     println!();
 }
