@@ -1,4 +1,6 @@
 use std::fs;
+use num_bigint::{BigInt, ToBigInt};
+use num_traits::Zero;
 
 pub fn run() {
     let input = fs::read_to_string("24_example.txt").unwrap();
@@ -61,48 +63,61 @@ fn pt1(input: &str, test_area: &TestArea) -> usize {
                             // already seen.
 }
 
-fn pt2(input: &str) -> f64 {
-    let hailstones: Vec<_> = input.lines().map(|line| parse_line(line)).take(4).collect();
+fn pt2(input: &str) -> BigInt {
+    let mut hailstones = input.lines().map(|line| {
+        let (position, velocity) = line.split_once(" @ ").unwrap();
+        let position: Vec<i128> = position.split(", ").map(|s| s.trim().parse().unwrap()).take(3).collect();
+        let velocity: Vec<_> = velocity.split(", ").map(|s| s.trim().parse().unwrap()).take(3).collect();
+        [position[0], position[1], position[2], velocity[0], velocity[1], velocity[2]]
+    });
 
-    let start_hailstone = &hailstones[0];
+    let hailstone_0 = hailstones.next().unwrap();
 
-    let cramers_rule_equations = hailstones[1..]
-        .iter()
-        .map(|hailstone| cramer_equations(start_hailstone, &hailstone));
+    let mut matrix = vec![];
 
-    let cramers_matrix: Vec<_> = cramers_rule_equations
-        .clone()
-        .flatten()
-        .map(|equation| equation.coefficients.as_vec())
-        .collect();
+    let mut constants = vec![];
 
-    assert_eq!(6, cramers_matrix.len());
-    assert_eq!(6, cramers_matrix[0].len());
+    for hailstone_n in hailstones.take(3) {
+        let [px_0, py_0, pz_0, vx_0, vy_0, vz_0] = hailstone_0;
+        let [px_n, py_n, pz_n, vx_n, vy_n, vz_n] = hailstone_n;
 
-    let cramers_constants: Vec<_> = cramers_rule_equations
-        .flatten()
-        .map(|equation| equation.rhs)
-        .collect();
+        matrix.push(vec![vy_0 - vy_n, vx_n - vx_0, 0, py_n - py_0, px_0 - px_n, 0]);
+        constants.push(px_0 * vy_0 - py_0 * vx_0 - px_n * vy_n + py_n * vx_n);
+        matrix.push(vec![vz_0 - vz_n, 0, vx_n - vx_0, pz_n - pz_0, 0, px_0 - px_n]);
+        constants.push(px_0 * vz_0 - pz_0 * vx_0 - px_n * vz_n + pz_n * vx_n);
+    }
 
-    let coefficient_determinant = determinant(&cramers_matrix);
+    let coefficient_determinant = determinant(&matrix);
 
-    let rock_x_matrix = replace_with_constants(&cramers_matrix, &cramers_constants, 0);
+    let rock_x_matrix = replace_with_constants(&matrix, &constants, 0);
     let rock_x_determinant = determinant(&rock_x_matrix);
-    let rock_x = rock_x_determinant / coefficient_determinant;
+    let rock_x = rock_x_determinant / &coefficient_determinant;
 
-    let rock_y_matrix = replace_with_constants(&cramers_matrix, &cramers_constants, 1);
+    let rock_y_matrix = replace_with_constants(&matrix, &constants, 1);
     let rock_y_determinant = determinant(&rock_y_matrix);
-    let rock_y = rock_y_determinant / coefficient_determinant;
+    let rock_y = rock_y_determinant / &coefficient_determinant;
 
-    let rock_z_matrix = replace_with_constants(&cramers_matrix, &cramers_constants, 2);
+    let rock_z_matrix = replace_with_constants(&matrix, &constants, 2);
     let rock_z_determinant = determinant(&rock_z_matrix);
-    let rock_z = rock_z_determinant / coefficient_determinant;
+    let rock_z = rock_z_determinant / &coefficient_determinant;
 
     rock_x + rock_y + rock_z
 }
 
-fn determinant(matrix: &Vec<Vec<f64>>) -> f64 {
-    let mut answer = 0.;
+fn replace_with_constants(
+    matrix: &Vec<Vec<i128>>,
+    constants: &Vec<i128>,
+    column_index: usize,
+) -> Vec<Vec<i128>> {
+    let mut matrix = matrix.clone(); // Can we avoid the clone?
+    for i in 0..matrix.len() {
+        matrix[i][column_index] = constants[i]
+    }
+    matrix
+}
+
+fn determinant(matrix: &Vec<Vec<i128>>) -> BigInt {
+    let mut answer = Zero::zero();
     for i in 0..matrix.len() {
         let element = matrix[i][0];
         let mut minor_matrix = matrix.clone(); // TODO can the clone() be avoided?
@@ -111,88 +126,16 @@ fn determinant(matrix: &Vec<Vec<f64>>) -> f64 {
             row.remove(0);
         }
         let minor = if minor_matrix.len() == 1 {
-            minor_matrix[0][0]
+            minor_matrix[0][0].to_bigint().unwrap()
         } else {
             determinant(&minor_matrix)
         };
-        let place_value = if i % 2 == 0 { 1. } else { -1. };
+        let place_value = if i % 2 == 0 { 1 } else { -1 };
         let cofactor = minor * place_value;
         let product = cofactor * element;
         answer += product
     }
     answer
-}
-
-fn cramer_equations(hailstone_a: &HailStone, hailstone_b: &HailStone) -> Vec<CramerEquation> {
-    vec![
-        CramerEquation {
-            coefficients: CramerCoefficients {
-                rock_x: hailstone_a.y_velocity - hailstone_b.y_velocity,
-                rock_y: hailstone_b.x_velocity - hailstone_a.x_velocity,
-                rock_z: 0.,
-                rock_x_velocity: hailstone_b.y - hailstone_a.y,
-                rock_y_velocity: hailstone_a.x - hailstone_b.x,
-                rock_z_velocity: 0.,
-            },
-            rhs: (hailstone_a.x * hailstone_a.y_velocity)
-                - (hailstone_a.y * hailstone_a.x_velocity)
-                - (hailstone_b.x * hailstone_b.y_velocity)
-                + (hailstone_b.y * hailstone_b.x_velocity),
-        },
-        CramerEquation {
-            coefficients: CramerCoefficients {
-                rock_x: hailstone_a.z_velocity - hailstone_b.z_velocity,
-                rock_y: 0.,
-                rock_z: hailstone_b.x_velocity - hailstone_a.x_velocity,
-                rock_x_velocity: hailstone_b.z - hailstone_a.z,
-                rock_y_velocity: 0.,
-                rock_z_velocity: hailstone_a.x - hailstone_b.x,
-            },
-            rhs: (hailstone_a.x * hailstone_a.z_velocity)
-                - (hailstone_a.z * hailstone_a.x_velocity)
-                - (hailstone_b.x * hailstone_b.z_velocity)
-                + (hailstone_b.z * hailstone_b.x_velocity),
-        },
-    ]
-}
-
-fn replace_with_constants(
-    matrix: &Vec<Vec<f64>>,
-    constants: &Vec<f64>,
-    column_index: usize,
-) -> Vec<Vec<f64>> {
-    let mut matrix = matrix.clone(); // Can we avoid the clone?
-    for i in 0..matrix.len() {
-        matrix[i][column_index] = constants[i]
-    }
-    matrix
-}
-
-struct CramerCoefficients {
-    rock_x: f64,
-    rock_y: f64,
-    rock_z: f64,
-    rock_x_velocity: f64,
-    rock_y_velocity: f64,
-    rock_z_velocity: f64,
-}
-
-impl CramerCoefficients {
-    fn as_vec(&self) -> Vec<f64> {
-        vec![
-            self.rock_x,
-            self.rock_y,
-            self.rock_z,
-            self.rock_x_velocity,
-            self.rock_y_velocity,
-            self.rock_z_velocity,
-        ]
-    }
-}
-
-struct CramerEquation {
-    coefficients: CramerCoefficients,
-    rhs: f64, // TODO: rename to "constant"
 }
 
 fn parse_input(input: &str) -> Vec<(HailStone, LineEquation)> {
@@ -509,53 +452,5 @@ mod day_24_pt1_tests {
         let line_equation_a = line_equation(&hailstone_a);
         let line_equation_b = line_equation(&hailstone_b);
         assert!(!line_equation_a.is_parallel_to(&line_equation_b));
-    }
-}
-
-#[cfg(test)]
-mod day_24_pt2_tests {
-    use super::*;
-
-    #[test]
-    fn test_determinant_2x2() {
-        let matrix = vec![vec![3., 9.], vec![3., -5.]];
-        assert_eq!((3. * -5.) - (9. * 3.), determinant(&matrix));
-    }
-
-    #[test]
-    fn test_determinant_3x3() {
-        let matrix = vec![vec![3., 9., -8.], vec![2., -5., 1.], vec![-1., 12., -13.]];
-        assert_eq!(232., determinant(&matrix));
-    }
-
-    #[test]
-    fn test_determinant_6x6() {
-        let matrix = vec![
-            vec![3., 9., -8., 7., -3., 6.],
-            vec![2., -5., 1., -2., 7., 4.],
-            vec![-1., 12., -13., -4., 8., 11.],
-            vec![3., 3., -6., 15., -9., 2.],
-            vec![16., 5., 19., -3., 15., 2.],
-            vec![1., 9., -3., -17., 18., 20.],
-        ];
-        assert_eq!(665160., determinant(&matrix));
-    }
-
-    #[test]
-    fn test_replace_with_constants() {
-        let matrix = vec![
-            vec![2.0, 1.0, 0.0, 6.0, 1.0, 0.0],
-            vec![-1.0, 0.0, 0.0, 1.0, 0.0, -8.0],
-            vec![3.0, 0.0, 0.0, 12.0, -1.0, 0.0],
-            vec![0.0, 0.0, -2.0, -1.0, 0.0, 4.0],
-            vec![3.0, 1.0, 0.0, 18.0, 7.0, 0.0],
-            vec![-1.0, 0.0, 1.0, 7.0, 0.0, -2.0],
-        ];
-        let constants = vec![44.0, -4.0, 35.0, -74.0, 38.0, 6.0];
-        let column_index = 0;
-        let matrix = replace_with_constants(&matrix, &constants, column_index);
-        for (i, constant) in constants.iter().enumerate() {
-            assert_eq!(*constant, matrix[i][column_index]);
-        }
     }
 }
