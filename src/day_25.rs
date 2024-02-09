@@ -1,6 +1,6 @@
-// use std::collections::hash_map::DefaultHasher;
+use std::collections::hash_map::DefaultHasher;
 use std::cmp::{max, min};
-// use std::hash::{Hash, Hasher};
+use std::hash::{Hash, Hasher};
 use std::fs;
 use std::collections::{HashMap, HashSet};
 
@@ -10,202 +10,141 @@ pub fn run() {
 }
 
 fn pt1(input: &str) -> usize {
-    let mut edges = HashSet::new();
-    let mut vertices = HashSet::new();
+    let mut components = create_components(input);
+
+    let mut wires = create_wires(&components);
+
+    let start_component = components.keys().next().unwrap().clone();
+
+    loop {
+        let cut_weight = phase(&mut components, &mut wires, start_component);
+        if cut_weight == 3 {
+            break
+        }
+    }
+
+    0
+}
+
+fn phase(components: &mut HashMap<u64, Vec<u64>>, wires: &mut HashMap<(u64, u64), u64>, start_component: u64) -> u64 {
+    let ordered_components = ordered_components(components, wires, start_component);
+
+    let t = ordered_components[ordered_components.len() - 1];
+    let s = ordered_components[ordered_components.len() - 2];
+
+    let t_connections = components.remove(&t).unwrap();
+    let s_connections = components.remove(&s).unwrap();
+
+    let mut new_connections = HashMap::new();
+
+    let mut cut_weight = 0;
+
+    for connection_hash in t_connections {
+        if connection_hash == s {
+            continue
+        }
+        let new_connection = new_connections.entry(connection_hash).or_insert(0);
+        let wire = wire(t, connection_hash);
+        let wire_weight = wires.get(&wire).unwrap();
+        *new_connection += wire_weight;
+        cut_weight += wire_weight;
+        wires.remove(&wire);
+    }
+
+    for connection_hash in s_connections {
+        if connection_hash == t {
+            continue
+        }
+        let new_connection = new_connections.entry(connection_hash).or_insert(0);
+        let wire = wire(s, connection_hash);
+        let wire_weight = wires.get(&wire).unwrap();
+        *new_connection += wire_weight;
+        wires.remove(&wire);
+    }
+
+    let new_component_hash = hash(&format!("{t}{s}")); // TODO: think of a better way to generate a
+                                                       // new hash
+    for (connection_hash, wire_weight) in &new_connections {
+        let wire = wire(new_component_hash, *connection_hash);
+        wires.insert(wire, *wire_weight);
+    }
+
+    let new_connection_hashes = new_connections.into_keys().collect();
+
+    components.insert(new_component_hash, new_connection_hashes);
+
+    cut_weight
+}
+
+fn ordered_components(components: &HashMap<u64, Vec<u64>>, wires: &HashMap<(u64, u64), u64>, start_component: u64) -> Vec<u64> {
+    let mut ordered_components = vec![start_component];
+
+    while ordered_components.len() != components.len() {
+        let mut connected_components: HashMap<u64, u64> = HashMap::new();
+
+        for component_hash_a in &ordered_components {
+            let connections = components.get(component_hash_a).unwrap();
+            for component_hash_b in connections {
+                let wire = wire(*component_hash_a, *component_hash_b);
+                let wire_weight = wires.get(&wire).unwrap();
+                let entry = connected_components.entry(*component_hash_b).or_insert(0);
+                *entry += wire_weight;
+            }
+        }
+
+        let next_component = connected_components.iter().max_by_key(|(_, weight)| *weight).unwrap();
+
+        let next_component_hash = next_component.0;
+
+        ordered_components.push(*next_component_hash);
+    }
+
+    ordered_components
+}
+
+fn create_components(input: &str) -> HashMap<u64, Vec<u64>> {
+    let mut components: HashMap<u64, Vec<u64>> = HashMap::new();
 
     for line in input.lines() {
-        let (component_name, connection_names) = line.split_once(": ").unwrap();
-        // let (connection_names, weight) = connection_names.split_once(" ~ ").unwrap();
-        // let weight = weight.parse().unwrap();
-
-        vertices.insert(component_name.to_string());
-
-        for connection_name in connection_names.split(" ") {
-            let component_name = component_name.to_string();
-
-            let connection_name = connection_name.to_string();
-
-            vertices.insert(connection_name.clone());
-
-            // TODO: move this logic to a tuple Struct constructor
-            let weight = 1;
-            let edge = (weight, min(component_name.clone(), connection_name.clone()), max(component_name, connection_name));
-            edges.insert(edge);
-        };
-    }
-
-    let mut vertices: Vec<String> = vertices.iter().map(|s| s.to_string()).collect();
-
-    let mut min_weight = i32::MAX;
-    let mut vertices_at_min_weight = vec![];
-
-    let mut phase_count = 0;
-
-    while vertices.len() > 1 {
-        phase_count += 1;
-        println!("Starting phase {phase_count} >>>\n\n");
-        let weight = run_minimum_cut_phase(&mut vertices, &mut edges);
-
-        if weight < min_weight {
-            min_weight = weight;
-            vertices_at_min_weight = vertices.clone();
+        let (component_name, rest) = line.split_once(": ").unwrap();
+        let component_hash = hash(component_name);
+        let mut connection_hashes: Vec<_> = rest.split(" ").map(|s| hash(s)).collect();
+        for connection_hash in &connection_hashes {
+            let connected_component = components.entry(*connection_hash).or_insert(vec![]);
+            connected_component.push(component_hash);
         }
-        println!();
+        let component = components.entry(component_hash).or_insert(vec![]);
+        component.append(&mut connection_hashes);
     }
 
-    println!("min_weight: {min_weight}");
+    for connected_component in components.values() {
+        let as_set: HashSet<_> = connected_component.iter().collect();
+        assert!(connected_component.len() == as_set.len());
+    }
 
-    let group_1 = vertices_at_min_weight.pop().unwrap();
-    let mut group_1: Vec<_> = group_1.split("-").collect();
-    let mut group_2: Vec<_> = vertices_at_min_weight.iter().flat_map(|vertex| vertex.split("-")).collect();
-
-    group_2.push(group_1.remove(0));
-
-    // println!("group_1: {:?}", group_1);
-    // println!("group_2: {:?}", group_2);
-
-    group_1.len() * group_2.len()
+    components
 }
 
-fn run_minimum_cut_phase(vertexes: &mut Vec<String>, edges: &mut HashSet<(i32, String, String)>) -> i32 {
-    let mut minimum_cut_phase = vec![];
+fn create_wires(components: &HashMap<u64, Vec<u64>>) -> HashMap<(u64, u64), u64> {
+    let mut wires = HashMap::new();
 
-    let starting_vertex = vertexes.remove(0);
-
-    println!("starting_vertex: {starting_vertex}");
-
-    minimum_cut_phase.push(starting_vertex);
-
-    // println!("Start minimum_cut_phase: {:?}", minimum_cut_phase);
-    // println!("Start vertexes: {:?}", vertexes);
-
-    while !vertexes.is_empty() {
-        vertexes.sort_by_key(|vertex| {
-            let mut score = 0;
-
-            for edge in edges.iter() {
-                if edge.1 == *vertex && minimum_cut_phase.contains(&edge.2) {
-                    score += edge.0;
-                } else if edge.2 == *vertex && minimum_cut_phase.contains(&edge.1) {
-                    score += edge.0;
-                }
-            }
-
-            score
-        });
-
-        let next_vertex = vertexes.pop().unwrap();
-
-        minimum_cut_phase.push(next_vertex);
+    for (component_hash_a, connected_component_hashes) in components {
+        let new_wires = connected_component_hashes.iter().map(|component_hash_b| wire(*component_hash_a, *component_hash_b));
+        for wire in new_wires {
+            let weight = 1;
+            wires.insert(wire, weight);
+        }
     }
 
-    // println!("Sorted minimum_cut_phase: {:?}", minimum_cut_phase);
-
-    let t = minimum_cut_phase.pop().unwrap();
-
-    // println!("t: {t}");
-
-    let s = minimum_cut_phase.pop().unwrap();
-
-    // println!("s: {s}");
-
-    let s_t_edge = edges.iter().find(|edge| {
-        (edge.1 == s && edge.2 == t) || (edge.2 == s && edge.1 == t)
-    }).unwrap().clone();
-
-    // println!("s_t_edge: {:?}", s_t_edge);
-
-    edges.remove(&s_t_edge);
-
-    let t_edges: HashSet<_> = edges.iter().filter(|edge| {
-        edge.1 == t || edge.2 == t
-    }).map(|edge| edge.clone()).collect();
-
-    // println!("t_edges: {:?}", t_edges);
-
-    let weight = t_edges.iter().map(|edge| edge.0).sum::<i32>() + s_t_edge.0;
-
-    println!("weight: {weight}");
-
-    for edge in &t_edges {
-        edges.remove(edge);
-    }
-
-    // println!("edges after removing t edges: {:?}", edges);
-
-    let s_edges: HashSet<_> = edges.iter().filter(|edge| {
-        edge.1 == s || edge.2 == s
-    }).map(|edge| edge.clone()).collect();
-
-    // println!("s_edges: {:?}", s_edges);
-
-    for edge in &s_edges {
-        edges.remove(edge);
-    }
-
-    // println!("edges after removing s edges: {:?}", edges);
-
-    let new_vertex = format!("{s}-{t}");
-
-    let mut new_edges_weights = HashMap::new();
-
-    for edge in &t_edges {
-        let other_vertex = if edge.1 == t {
-            &edge.2
-        } else {
-            &edge.1
-        };
-
-        let entry = new_edges_weights.entry(other_vertex).or_insert(0);
-
-        let weight = edge.0;
-
-        *entry += weight;
-    }
-
-    for edge in &s_edges {
-        let other_vertex = if edge.1 == s {
-            &edge.2
-        } else {
-            &edge.1
-        };
-
-        let entry = new_edges_weights.entry(other_vertex).or_insert(0);
-
-        let weight = edge.0;
-
-        *entry += weight;
-    }
-
-    // println!("new_edges_weights: {:?}", new_edges_weights);
-
-    for (other_vertex, weight) in new_edges_weights {
-        let new_edge = (weight, min(new_vertex.clone(), other_vertex.clone()), max(new_vertex.clone(), other_vertex.clone()));
-        edges.insert(new_edge);
-    }
-
-    // println!("edges after adding new edges: {:?}", edges);
-
-    for vertex in minimum_cut_phase {
-        vertexes.push(vertex);
-    }
-
-    // println!("Adding new vertex: {new_vertex}");
-
-    vertexes.push(new_vertex);
-
-    // println!("vertexes after creating new vertex: {:?}", vertexes);
-
-    weight
+    wires
 }
 
-// fn hash(s: &str) -> u64 {
-//     let mut hasher = DefaultHasher::new();
-//     s.hash(&mut hasher);
-//     hasher.finish()
-// }
+fn hash(s: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    s.hash(&mut hasher);
+    hasher.finish()
+}
 
-#[cfg(test)]
-mod day_25_pt1_tests {
-    use super::*;
+fn wire(component_hash_a: u64, component_hash_b: u64) -> (u64, u64) {
+    (min(component_hash_a, component_hash_b), max(component_hash_a, component_hash_b))
 }
